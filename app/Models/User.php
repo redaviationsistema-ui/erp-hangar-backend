@@ -7,27 +7,29 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+// 👇 IMPORTANTE: importar el modelo Area
+use App\Models\Area;
 
 class User extends Authenticatable
 {
+    use HasApiTokens;
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+     * Campos que se pueden llenar masivamente
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'area_id', // 🔥 AGREGA ESTO
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
+     * Campos ocultos
      */
     protected $hidden = [
         'password',
@@ -35,9 +37,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Casts de atributos
      */
     protected function casts(): array
     {
@@ -45,5 +45,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * 🔥 RELACIÓN: Usuario pertenece a un área
+     */
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
     }
 }
