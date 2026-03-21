@@ -14,20 +14,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY . .
 
-# 🔥 CREAR CARPETAS ANTES DE COMPOSER
+# Crear carpetas necesarias
 RUN mkdir -p bootstrap/cache storage/framework storage/logs
 
-# 🔥 DAR PERMISOS ANTES
+# Permisos
 RUN chmod -R 777 bootstrap/cache storage
 
-# 🔥 AHORA SÍ composer
+# Instalar dependencias
 RUN composer install --no-dev --optimize-autoloader
-
-# Limpieza (opcional pero bien)
-RUN php artisan config:clear && \
-    php artisan route:clear && \
-    php artisan view:clear && \
-    php artisan cache:clear
 
 EXPOSE 10000
 
