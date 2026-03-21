@@ -30,10 +30,10 @@ class AuthController extends Controller
         }
 
         // 🔐 CREAR TOKEN (Laravel Sanctum)
-        $token = $user->createToken('api')->plainTextToken;
+        // $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
-            'token' => $token,
+            // 'token' => $token,
             'user' => $user->name,
             'area' => $user->area?->codigo // 🔥 evita error null
         ]);
