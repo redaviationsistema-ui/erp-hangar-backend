@@ -22,8 +22,8 @@ Route::prefix('v1')->group(function () {
     // 🔐 LOGIN (público)
     Route::post('/login', [AuthController::class, 'login']);
 
-    // 🔒 PROTEGIDAS
-    Route::middleware(['auth:sanctum'])->group(function () {
+    // // 🔒 PROTEGIDAS
+    // Route::middleware(['auth:sanctum'])->group(function () {
 
         // 📂 ÁREAS
         Route::apiResource('areas', AreaController::class);
@@ -46,4 +46,4 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('mediciones', MedicionController::class);
     });
 
-});
+// });
