@@ -4,51 +4,93 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-// 👇 IMPORTAR MODELOS
-use App\Models\TipoOrden;
-use App\Models\OrdenDetalle;
-use App\Models\User;
-use App\Models\Tarea;
-use App\Models\Discrepancia;
-use App\Models\Refaccion;
-use App\Models\Consumible;
-use App\Models\Herramienta;
-use App\Models\Ndt;
-use App\Models\TallerExterno;
-use App\Models\Medicion;
-
 class Orden extends Model
 {
-    // 🔥 IMPORTANTE (ARREGLA TU ERROR)
     protected $table = 'ordenes';
 
     protected $fillable = [
+        'area_id',
         'tipo_id',
         'user_id',
+        'ata_chapter_id',
+        'ata_subchapter_id',
+        'motor_id',
         'folio',
+        'consecutivo',
+        'anio',
+        'fecha',
+        'cliente',
+        'matricula',
+        'aeronave_modelo',
+        'aeronave_serie',
+        'tiempo_total',
+        'ciclos_totales',
         'descripcion',
+        'trabajo_descripcion',
+        'componente_descripcion',
+        'componente_modelo',
+        'componente_numero_parte',
+        'componente_numero_serie',
+        'componente_tiempo_total',
+        'componente_ciclos_totales',
+        'tipo_tarea',
+        'intervalo',
+        'accion_correctiva',
+        'tecnico_responsable',
+        'inspector',
+        'fecha_inicio',
+        'fecha_termino',
         'estado',
     ];
 
-    // 🔥 RELACIÓN: tipo
+    protected function casts(): array
+    {
+        return [
+            'fecha' => 'date',
+            'fecha_inicio' => 'date',
+            'fecha_termino' => 'date',
+            'tiempo_total' => 'decimal:2',
+            'ciclos_totales' => 'decimal:2',
+            'componente_tiempo_total' => 'decimal:2',
+            'componente_ciclos_totales' => 'decimal:2',
+        ];
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
+    }
+
     public function tipo()
     {
         return $this->belongsTo(TipoOrden::class, 'tipo_id');
     }
 
-    // 🔥 RELACIÓN: detalles
     public function detalles()
     {
         return $this->hasMany(OrdenDetalle::class, 'orden_id');
     }
 
-    // 🔥 RELACIÓN: usuario (TE FALTABA)
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // 🔥 RELACIONES
+    public function ataChapter()
+    {
+        return $this->belongsTo(AtaChapter::class, 'ata_chapter_id');
+    }
+
+    public function ataSubchapter()
+    {
+        return $this->belongsTo(AtaSubchapter::class, 'ata_subchapter_id');
+    }
+
+    public function motor()
+    {
+        return $this->belongsTo(Motor::class, 'motor_id');
+    }
+
     public function tareas()
     {
         return $this->hasMany(Tarea::class, 'orden_id');
@@ -87,31 +129,5 @@ class Orden extends Model
     public function mediciones()
     {
         return $this->hasMany(Medicion::class, 'orden_id');
-    }
-    // FUNCION PARA GENERAR FOLIOS
-    public static function generarFolio($area_id)
-    {
-        $area = Area::find($area_id);
-
-        $anio = now()->year;
-
-        $ultimo = self::where('area_id', $area_id)
-            ->where('anio', $anio)
-            ->max('consecutivo');
-
-        $nuevoConsecutivo = $ultimo ? $ultimo + 1 : 1;
-
-        $folio = sprintf(
-            "CESA-%s-%s-%03d",
-            $area->codigo,
-            $anio,
-            $nuevoConsecutivo
-        );
-
-        return [
-            'folio' => $folio,
-            'anio' => $anio,
-            'consecutivo' => $nuevoConsecutivo
-        ];
     }
 }

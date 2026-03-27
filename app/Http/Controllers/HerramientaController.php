@@ -3,67 +3,76 @@
 namespace App\Http\Controllers;
 
 use App\Models\Herramienta;
+use App\Support\SchemaPayload;
 use Illuminate\Http\Request;
 
 class HerramientaController extends Controller
 {
-    /**
-     * 📄 Listar todas las herramientas
-     */
-    public function index()
+    public function index(Request $request)
     {
-        return Herramienta::with('orden')->get();
+        $items = $this->applyOrderAreaScope($request, Herramienta::query())
+            ->with('orden')
+            ->when($request->filled('orden_id'), fn ($q) => $q->where('orden_id', $request->integer('orden_id')))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
-    /**
-     * 💾 Crear una herramienta
-     */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'orden_id' => 'required|exists:ordenes,id',
-            'nombre' => 'required|string',
-        ]);
+        $data = $this->validatePayload($request, false);
+        $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        $this->authorizeInventoryPricingIfPresent($request, $data);
 
-        $item = Herramienta::create($data);
-
-        return response()->json($item, 201);
+        return response()->json(['success' => true, 'data' => Herramienta::create(SchemaPayload::forModel(new Herramienta(), $data))->load('orden')], 201);
     }
 
-    /**
-     * 🔍 Mostrar una herramienta específica
-     */
-    public function show($id)
+    public function show(Herramienta $herramienta)
     {
-        return Herramienta::with('orden')->findOrFail($id);
+        $this->authorizeOrderArea(request(), $herramienta);
+
+        return response()->json(['success' => true, 'data' => $herramienta->load('orden')]);
     }
 
-    /**
-     * ✏️ Actualizar herramienta
-     */
-    public function update(Request $request, $id)
+    public function update(Request $request, Herramienta $herramienta)
     {
-        $item = Herramienta::findOrFail($id);
+        $this->authorizeOrderArea($request, $herramienta);
+        $data = $this->validatePayload($request, true);
+        $this->authorizeInventoryPricingIfPresent($request, $data);
+        if (array_key_exists('orden_id', $data)) {
+            $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        }
 
-        $data = $request->validate([
-            'nombre' => 'sometimes|string',
-        ]);
+        $herramienta->update(SchemaPayload::forModel($herramienta, $data));
 
-        $item->update($data);
-
-        return response()->json($item);
+        return response()->json(['success' => true, 'data' => $herramienta->load('orden')]);
     }
 
-    /**
-     * 🗑️ Eliminar herramienta
-     */
-    public function destroy($id)
+    public function destroy(Herramienta $herramienta)
     {
-        $item = Herramienta::findOrFail($id);
-        $item->delete();
+        $this->authorizeOrderArea(request(), $herramienta);
+        $herramienta->delete();
 
-        return response()->json([
-            'message' => 'Herramienta eliminada'
+        return response()->json(['success' => true, 'message' => 'Herramienta eliminada correctamente.']);
+    }
+
+    private function validatePayload(Request $request, bool $partial): array
+    {
+        return $request->validate([
+            'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
+            'item' => 'sometimes|nullable|string|max:20',
+            'solicitante_fecha' => 'sometimes|nullable|date',
+            'nombre' => 'sometimes|nullable|string|max:255',
+            'descripcion' => ($partial ? 'sometimes' : 'required') . '|string',
+            'cantidad' => 'sometimes|nullable|integer|min:1',
+            'numero_parte' => 'sometimes|nullable|string|max:255',
+            'status' => 'sometimes|nullable|string|max:100',
+            'certificado_conformidad' => 'sometimes|nullable|string|max:255',
+            'area_procedencia' => 'sometimes|nullable|string|max:255',
+            'recibe_fecha' => 'sometimes|nullable|date',
+            'costo_total' => 'sometimes|nullable|numeric',
+            'precio_venta' => 'sometimes|nullable|numeric',
         ]);
     }
 }

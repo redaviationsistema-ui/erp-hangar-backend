@@ -4,16 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * @property int $id
- * @property string $nombre
- * @property string $codigo
- */
-
 class Area extends Model
 {
     protected $fillable = [
-    'nombre',
-    'codigo'
-];
+        'nombre',
+        'codigo',
+        'numero',
+    ];
+
+    public function ordenes()
+    {
+        return $this->hasMany(Orden::class);
+    }
+
+    public function usuarios()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function ataTaskTemplates()
+    {
+        return $this->hasMany(AtaTaskTemplate::class);
+    }
 }

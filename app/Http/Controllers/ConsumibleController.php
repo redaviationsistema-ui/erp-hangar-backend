@@ -3,69 +3,76 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consumible;
+use App\Support\SchemaPayload;
 use Illuminate\Http\Request;
 
 class ConsumibleController extends Controller
 {
-    /**
-     * 📄 Listar consumibles
-     */
-    public function index()
+    public function index(Request $request)
     {
-        return Consumible::with('orden')->get();
+        $items = $this->applyOrderAreaScope($request, Consumible::query())
+            ->with('orden')
+            ->when($request->filled('orden_id'), fn ($q) => $q->where('orden_id', $request->integer('orden_id')))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
-    /**
-     * 💾 Crear consumible
-     */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'orden_id' => 'required|exists:ordenes,id',
-            'nombre' => 'required|string',
-            'cantidad' => 'required|numeric',
-        ]);
+        $data = $this->validatePayload($request, false);
+        $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        $this->authorizeInventoryPricingIfPresent($request, $data);
 
-        $item = Consumible::create($data);
-
-        return response()->json($item, 201);
+        return response()->json(['success' => true, 'data' => Consumible::create(SchemaPayload::forModel(new Consumible(), $data))->load('orden')], 201);
     }
 
-    /**
-     * 🔍 Mostrar consumible
-     */
-    public function show($id)
+    public function show(Consumible $consumible)
     {
-        return Consumible::with('orden')->findOrFail($id);
+        $this->authorizeOrderArea(request(), $consumible);
+
+        return response()->json(['success' => true, 'data' => $consumible->load('orden')]);
     }
 
-    /**
-     * ✏️ Actualizar consumible
-     */
-    public function update(Request $request, $id)
+    public function update(Request $request, Consumible $consumible)
     {
-        $item = Consumible::findOrFail($id);
+        $this->authorizeOrderArea($request, $consumible);
+        $data = $this->validatePayload($request, true);
+        $this->authorizeInventoryPricingIfPresent($request, $data);
+        if (array_key_exists('orden_id', $data)) {
+            $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        }
 
-        $data = $request->validate([
-            'nombre' => 'sometimes|string',
-            'cantidad' => 'sometimes|numeric',
-        ]);
+        $consumible->update(SchemaPayload::forModel($consumible, $data));
 
-        $item->update($data);
-
-        return response()->json($item);
+        return response()->json(['success' => true, 'data' => $consumible->load('orden')]);
     }
 
-    /**
-     * 🗑️ Eliminar consumible
-     */
-    public function destroy($id)
+    public function destroy(Consumible $consumible)
     {
-        $item = Consumible::findOrFail($id);
-        $item->delete();
+        $this->authorizeOrderArea(request(), $consumible);
+        $consumible->delete();
 
-        return response()->json([
-            'message' => 'Consumible eliminado'
+        return response()->json(['success' => true, 'message' => 'Consumible eliminado correctamente.']);
+    }
+
+    private function validatePayload(Request $request, bool $partial): array
+    {
+        return $request->validate([
+            'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
+            'item' => 'sometimes|nullable|string|max:20',
+            'solicitante_fecha' => 'sometimes|nullable|date',
+            'nombre' => 'sometimes|nullable|string|max:255',
+            'descripcion' => ($partial ? 'sometimes' : 'required') . '|string',
+            'cantidad' => 'sometimes|nullable|integer|min:1',
+            'numero_parte' => 'sometimes|nullable|string|max:255',
+            'status' => 'sometimes|nullable|string|max:100',
+            'certificado_conformidad' => 'sometimes|nullable|string|max:255',
+            'area_procedencia' => 'sometimes|nullable|string|max:255',
+            'recibe_fecha' => 'sometimes|nullable|date',
+            'costo_total' => 'sometimes|nullable|numeric',
+            'precio_venta' => 'sometimes|nullable|numeric',
         ]);
     }
 }

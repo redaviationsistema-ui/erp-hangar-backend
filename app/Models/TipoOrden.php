@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class TipoOrden extends Model
 {
-    protected $table = 'tipo_ordenes'; // 🔥 SOLUCIÓN
+    protected $table = 'tipo_ordenes';
 
     protected $fillable = [
         'nombre',
-        'codigo'
+        'codigo',
     ];
+
+    public function ordenes()
+    {
+        return $this->hasMany(Orden::class, 'tipo_id');
+    }
 }

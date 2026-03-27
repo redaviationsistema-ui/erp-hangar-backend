@@ -3,67 +3,77 @@
 namespace App\Http\Controllers;
 
 use App\Models\TallerExterno;
+use App\Support\SchemaPayload;
 use Illuminate\Http\Request;
 
 class TallerExternoController extends Controller
 {
-    /**
-     * 📄 Listar talleres externos
-     */
-    public function index()
+    public function index(Request $request)
     {
-        return TallerExterno::with('orden')->get();
+        $items = $this->applyOrderAreaScope($request, TallerExterno::query())
+            ->with('orden')
+            ->when($request->filled('orden_id'), fn ($q) => $q->where('orden_id', $request->integer('orden_id')))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
-    /**
-     * 💾 Crear registro de taller externo
-     */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'orden_id' => 'required|exists:ordenes,id',
-            'nombre' => 'required|string',
-        ]);
+        $data = $this->validatePayload($request, false);
+        $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
 
-        $item = TallerExterno::create($data);
-
-        return response()->json($item, 201);
+        return response()->json(['success' => true, 'data' => TallerExterno::create(SchemaPayload::forModel(new TallerExterno(), $data))->load('orden')], 201);
     }
 
-    /**
-     * 🔍 Mostrar taller externo
-     */
-    public function show($id)
+    public function show(TallerExterno $tallere)
     {
-        return TallerExterno::with('orden')->findOrFail($id);
+        $this->authorizeOrderArea(request(), $tallere);
+
+        return response()->json(['success' => true, 'data' => $tallere->load('orden')]);
     }
 
-    /**
-     * ✏️ Actualizar taller externo
-     */
-    public function update(Request $request, $id)
+    public function update(Request $request, TallerExterno $tallere)
     {
-        $item = TallerExterno::findOrFail($id);
+        $this->authorizeOrderArea($request, $tallere);
+        $data = $this->validatePayload($request, true);
+        if (array_key_exists('orden_id', $data)) {
+            $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        }
 
-        $data = $request->validate([
-            'nombre' => 'sometimes|string',
-        ]);
+        $tallere->update(SchemaPayload::forModel($tallere, $data));
 
-        $item->update($data);
-
-        return response()->json($item);
+        return response()->json(['success' => true, 'data' => $tallere->load('orden')]);
     }
 
-    /**
-     * 🗑️ Eliminar taller externo
-     */
-    public function destroy($id)
+    public function destroy(TallerExterno $tallere)
     {
-        $item = TallerExterno::findOrFail($id);
-        $item->delete();
+        $this->authorizeOrderArea(request(), $tallere);
+        $tallere->delete();
 
-        return response()->json([
-            'message' => 'Taller externo eliminado'
+        return response()->json(['success' => true, 'message' => 'Registro de taller externo eliminado correctamente.']);
+    }
+
+    private function validatePayload(Request $request, bool $partial): array
+    {
+        return $request->validate([
+            'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
+            'item' => 'sometimes|nullable|string|max:20',
+            'proveedor' => ($partial ? 'sometimes' : 'required') . '|string|max:255',
+            'tarea' => 'sometimes|nullable|string|max:255',
+            'cantidad' => 'sometimes|nullable|integer|min:1',
+            'sub_componente' => 'sometimes|nullable|string|max:255',
+            'numero_parte' => 'sometimes|nullable|string|max:255',
+            'numero_serie' => 'sometimes|nullable|string|max:255',
+            'foto_path' => 'sometimes|nullable|string|max:255',
+            'observaciones' => 'sometimes|nullable|string',
+            'certificado' => 'sometimes|nullable|string|max:255',
+            'envio_a' => 'sometimes|nullable|string|max:255',
+            'recepcion' => 'sometimes|nullable|string|max:255',
+            'trabajo_realizado' => 'sometimes|nullable|string',
+            'costo' => 'sometimes|nullable|numeric',
+            'precio_venta' => 'sometimes|nullable|numeric',
         ]);
     }
 }

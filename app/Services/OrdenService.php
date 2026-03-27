@@ -2,32 +2,47 @@
 
 namespace App\Services;
 
-// 🔥 IMPORTS IMPORTANTES
+use App\Models\Area;
 use App\Models\Orden;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class OrdenService
 {
-    public function generarFolio($tipo)
+    private ?bool $hasAreaColumn = null;
+
+    public function generarFolio(Area $area): array
     {
-        // 📅 Año actual
-        $anio = Carbon::now()->year;
+        $anioCompleto = Carbon::now()->year;
+        $anioCorto = Carbon::now()->format('y');
+        $folioPrefix = sprintf('CESA-%s%s-', strtoupper($area->codigo), $anioCorto);
 
-        // 🔍 Obtener último consecutivo
-        $ultimo = Orden::where('tipo_id', $tipo->id)
-            ->where('anio', $anio)
-            ->max('consecutivo');
+        $query = Orden::query()->where('anio', $anioCompleto);
 
-        // 🧠 Si no hay registros, empieza en 1
+        if ($this->hasAreaColumn()) {
+            $query->where('area_id', $area->id);
+        } else {
+            $query->where('folio', 'like', $folioPrefix . '%');
+        }
+
+        $ultimo = $query->max('consecutivo');
+
         $nuevo = ($ultimo ?? 0) + 1;
 
-        // 🧾 Generar folio
-        $folio = "CESA-{$tipo->codigo}-{$anio}-" . str_pad($nuevo, 4, '0', STR_PAD_LEFT);
-
         return [
-            'folio' => $folio,
+            'folio' => sprintf(
+                'CESA-%s%s-%03d',
+                strtoupper($area->codigo),
+                $anioCorto,
+                $nuevo
+            ),
             'consecutivo' => $nuevo,
-            'anio' => $anio
+            'anio' => $anioCompleto,
         ];
+    }
+
+    private function hasAreaColumn(): bool
+    {
+        return $this->hasAreaColumn ??= Schema::hasColumn('ordenes', 'area_id');
     }
 }

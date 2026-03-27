@@ -3,67 +3,76 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ndt;
+use App\Support\SchemaPayload;
 use Illuminate\Http\Request;
 
 class NdtController extends Controller
 {
-    /**
-     * 📄 Listar pruebas NDT
-     */
-    public function index()
+    public function index(Request $request)
     {
-        return Ndt::with('orden')->get();
+        $items = $this->applyOrderAreaScope($request, Ndt::query())
+            ->with('orden')
+            ->when($request->filled('orden_id'), fn ($q) => $q->where('orden_id', $request->integer('orden_id')))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
-    /**
-     * 💾 Crear registro NDT
-     */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'orden_id' => 'required|exists:ordenes,id',
-            'tipo' => 'required|string',
-        ]);
+        $data = $this->validatePayload($request, false);
+        $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
 
-        $item = Ndt::create($data);
-
-        return response()->json($item, 201);
+        return response()->json(['success' => true, 'data' => Ndt::create(SchemaPayload::forModel(new Ndt(), $data))->load('orden')], 201);
     }
 
-    /**
-     * 🔍 Mostrar NDT
-     */
-    public function show($id)
+    public function show(Ndt $ndt)
     {
-        return Ndt::with('orden')->findOrFail($id);
+        $this->authorizeOrderArea(request(), $ndt);
+
+        return response()->json(['success' => true, 'data' => $ndt->load('orden')]);
     }
 
-    /**
-     * ✏️ Actualizar NDT
-     */
-    public function update(Request $request, $id)
+    public function update(Request $request, Ndt $ndt)
     {
-        $item = Ndt::findOrFail($id);
+        $this->authorizeOrderArea($request, $ndt);
+        $data = $this->validatePayload($request, true);
+        if (array_key_exists('orden_id', $data)) {
+            $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        }
 
-        $data = $request->validate([
-            'tipo' => 'sometimes|string',
-        ]);
+        $ndt->update(SchemaPayload::forModel($ndt, $data));
 
-        $item->update($data);
-
-        return response()->json($item);
+        return response()->json(['success' => true, 'data' => $ndt->load('orden')]);
     }
 
-    /**
-     * 🗑️ Eliminar NDT
-     */
-    public function destroy($id)
+    public function destroy(Ndt $ndt)
     {
-        $item = Ndt::findOrFail($id);
-        $item->delete();
+        $this->authorizeOrderArea(request(), $ndt);
+        $ndt->delete();
 
-        return response()->json([
-            'message' => 'Registro NDT eliminado'
+        return response()->json(['success' => true, 'message' => 'Registro NDT eliminado correctamente.']);
+    }
+
+    private function validatePayload(Request $request, bool $partial): array
+    {
+        return $request->validate([
+            'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
+            'item' => 'sometimes|nullable|string|max:20',
+            'tipo_prueba' => ($partial ? 'sometimes' : 'required') . '|string|max:255',
+            'cantidad' => 'sometimes|nullable|integer|min:1',
+            'sub_componente' => 'sometimes|nullable|string|max:255',
+            'numero_parte' => 'sometimes|nullable|string|max:255',
+            'numero_serie' => 'sometimes|nullable|string|max:255',
+            'evidencia_path' => 'sometimes|nullable|string|max:255',
+            'seccion_manual' => 'sometimes|nullable|string|max:255',
+            'certificado' => 'sometimes|nullable|string|max:255',
+            'envio_a' => 'sometimes|nullable|string|max:255',
+            'recepcion' => 'sometimes|nullable|string|max:255',
+            'costo_total' => 'sometimes|nullable|numeric',
+            'precio_venta' => 'sometimes|nullable|numeric',
+            'resultado' => 'sometimes|nullable|string|max:255',
         ]);
     }
 }

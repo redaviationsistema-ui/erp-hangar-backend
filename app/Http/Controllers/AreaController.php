@@ -4,69 +4,123 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AreaController extends Controller
 {
-    /**
-     * 📄 LISTAR TODAS LAS ÁREAS
-     */
     public function index()
     {
-        return response()->json(Area::all());
+        $request = request();
+
+        $payload = Cache::remember($this->cacheKey('index', $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($request) {
+            $query = Area::query()
+                ->select(['id', 'nombre', 'codigo', 'numero', 'created_at', 'updated_at'])
+                ->withCount('ordenes')
+                ->orderBy('numero');
+
+            if (! $this->hasGlobalAreaAccess($request)) {
+                $query->whereKey($this->currentAreaId($request));
+            }
+
+            return [
+                'success' => true,
+                'data' => $query->get(),
+            ];
+        });
+
+        return response()->json($payload);
     }
 
-    /**
-     * 💾 CREAR NUEVA ÁREA
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'nombre' => 'required|string',
-            'codigo' => 'required|string|unique:areas,codigo'
+        $data = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'codigo' => 'required|string|max:20|unique:areas,codigo',
+            'numero' => 'required|string|max:10',
         ]);
 
-        $area = Area::create($request->all());
-
-        return response()->json($area, 201);
-    }
-
-    /**
-     * 🔍 VER UNA ÁREA
-     */
-    public function show($id)
-    {
-        $area = Area::findOrFail($id);
-
-        return response()->json($area);
-    }
-
-    /**
-     * ✏️ ACTUALIZAR ÁREA
-     */
-    public function update(Request $request, $id)
-    {
-        $area = Area::findOrFail($id);
-
-        $request->validate([
-            'nombre' => 'required|string',
-            'codigo' => 'required|string|unique:areas,codigo,' . $id
-        ]);
-
-        $area->update($request->all());
-
-        return response()->json($area);
-    }
-
-    /**
-     * 🗑 ELIMINAR ÁREA
-     */
-    public function destroy($id)
-    {
-        $area = Area::findOrFail($id);
-        $area->delete();
+        $area = Area::create($data);
+        $this->bustCache();
 
         return response()->json([
-            'message' => 'Área eliminada correctamente'
+            'success' => true,
+            'data' => $area,
+        ], 201);
+    }
+
+    public function show(Area $area)
+    {
+        $this->authorizeAreaId(request(), $area->id);
+
+        $payload = Cache::remember($this->cacheKey('show', ['id' => $area->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($area) {
+            return [
+                'success' => true,
+                'data' => $area->load([
+                    'ordenes' => fn ($query) => $query
+                        ->select([
+                            'id',
+                            'area_id',
+                            'tipo_id',
+                            'user_id',
+                            'folio',
+                            'fecha',
+                            'cliente',
+                            'matricula',
+                            'descripcion',
+                            'estado',
+                            'created_at',
+                            'updated_at',
+                        ])
+                        ->with([
+                            'tipo:id,codigo,nombre',
+                            'usuario:id,name,email',
+                        ])
+                        ->latest('fecha')
+                        ->latest('id'),
+                ])->loadCount('ordenes'),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    public function update(Request $request, Area $area)
+    {
+        $data = $request->validate([
+            'nombre' => 'sometimes|string|max:255',
+            'codigo' => 'sometimes|string|max:20|unique:areas,codigo,' . $area->id,
+            'numero' => 'sometimes|string|max:10',
         ]);
+
+        $area->update($data);
+        $this->bustCache();
+
+        return response()->json([
+            'success' => true,
+            'data' => $area,
+        ]);
+    }
+
+    public function destroy(Area $area)
+    {
+        $area->delete();
+        $this->bustCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Area eliminada correctamente.',
+        ]);
+    }
+
+    private function cacheKey(string $action, array $params = []): string
+    {
+        ksort($params);
+
+        return 'areas:' . Cache::get('areas_cache_version', 1) . ':' . Cache::get('ordenes_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+    }
+
+    private function bustCache(): void
+    {
+        Cache::forever('areas_cache_version', (int) Cache::get('areas_cache_version', 1) + 1);
     }
 }

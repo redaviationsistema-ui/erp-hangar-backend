@@ -26,13 +26,14 @@ return new class extends Migration {
     {
         Schema::create('areas', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre'); // AVIONICS, HANGAR...
-            $table->string('codigo'); // AVCS, HANG...
+            $table->string('codigo'); // CESA-AVCS
+            $table->string('numero'); // 01
+            $table->string('nombre'); // AVIONICS
             $table->timestamps();
         });
     }
 
-    /**
+    /** 
      * Reverse the migrations.
      */
     public function down(): void
