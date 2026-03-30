@@ -3,6 +3,21 @@ services:
     name: laravel-api
     env: php
     plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://erp-hangar-backend.onrender.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: red-aviation
     buildCommand: |
       composer install --no-dev --optimize-autoloader
       php artisan optimize:clear

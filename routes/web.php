@@ -9,26 +9,28 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/debug-imagen', function () {
-    $path = 'discrepancias/1544ca2b-3983-4a70-8d0e-dc34802df65f.png';
+if (! app()->environment('production')) {
+    Route::get('/debug-imagen', function () {
+        $path = 'discrepancias/1544ca2b-3983-4a70-8d0e-dc34802df65f.png';
 
-    return response()->json([
-        'path_bd' => $path,
-        'exists_public_disk' => Storage::disk('public')->exists($path),
-        'storage_real' => storage_path('app/public/' . $path),
-        'public_path' => public_path('storage/' . $path),
-        'url_publica' => asset('storage/' . $path),
-    ]);
-});
+        return response()->json([
+            'path_bd' => $path,
+            'exists_public_disk' => Storage::disk('public')->exists($path),
+            'storage_real' => storage_path('app/public/' . $path),
+            'public_path' => public_path('storage/' . $path),
+            'url_publica' => asset('storage/' . $path),
+        ]);
+    });
 
-Route::get('/debug-cloudinary', function () {
-    return response()->json([
-        'cloud_name' => config('services.cloudinary.cloud_name'),
-        'api_key_configured' => filled(config('services.cloudinary.api_key')),
-        'api_secret_configured' => filled(config('services.cloudinary.api_secret')),
-        'folder' => config('services.cloudinary.folder'),
-        'active' => filled(config('services.cloudinary.cloud_name'))
-            && filled(config('services.cloudinary.api_key'))
-            && filled(config('services.cloudinary.api_secret')),
-    ]);
-});
+    Route::get('/debug-cloudinary', function () {
+        return response()->json([
+            'cloud_name' => config('services.cloudinary.cloud_name'),
+            'api_key_configured' => filled(config('services.cloudinary.api_key')),
+            'api_secret_configured' => filled(config('services.cloudinary.api_secret')),
+            'folder' => config('services.cloudinary.folder'),
+            'active' => filled(config('services.cloudinary.cloud_name'))
+                && filled(config('services.cloudinary.api_key'))
+                && filled(config('services.cloudinary.api_secret')),
+        ]);
+    });
+}
