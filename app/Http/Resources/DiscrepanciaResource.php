@@ -56,6 +56,10 @@ class DiscrepanciaResource extends JsonResource
             return $path;
         }
 
+        if (! Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
         return Storage::disk('public')->url($path);
     }
 }

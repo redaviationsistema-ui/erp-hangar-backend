@@ -20,3 +20,15 @@ Route::get('/debug-imagen', function () {
         'url_publica' => asset('storage/' . $path),
     ]);
 });
+
+Route::get('/debug-cloudinary', function () {
+    return response()->json([
+        'cloud_name' => config('services.cloudinary.cloud_name'),
+        'api_key_configured' => filled(config('services.cloudinary.api_key')),
+        'api_secret_configured' => filled(config('services.cloudinary.api_secret')),
+        'folder' => config('services.cloudinary.folder'),
+        'active' => filled(config('services.cloudinary.cloud_name'))
+            && filled(config('services.cloudinary.api_key'))
+            && filled(config('services.cloudinary.api_secret')),
+    ]);
+});
