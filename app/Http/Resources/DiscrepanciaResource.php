@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\PublicStoragePath;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +25,7 @@ class DiscrepanciaResource extends JsonResource
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),
             'horas_hombre' => $this->horas_hombre,
-            'imagen_archivo' => $this->imagen_path,
+            'imagen_archivo' => PublicStoragePath::normalize($this->imagen_path),
             'imagen_path' => $imageUrl,
             'foto' => $imageUrl,
             'componente_numero_parte_off' => $this->componente_numero_parte_off,
@@ -48,18 +49,20 @@ class DiscrepanciaResource extends JsonResource
 
     private function resolveImageUrl(?string $path): ?string
     {
-        if (! is_string($path) || trim($path) === '') {
+        $normalizedPath = PublicStoragePath::normalize($path);
+
+        if ($normalizedPath === null) {
             return null;
         }
 
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
+        if (PublicStoragePath::isExternalUrl($normalizedPath) || Str::startsWith($normalizedPath, ['http://', 'https://'])) {
+            return $normalizedPath;
         }
 
-        if (! Storage::disk('public')->exists($path)) {
+        if (! Storage::disk('public')->exists($normalizedPath)) {
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return Storage::disk('public')->url($normalizedPath);
     }
 }

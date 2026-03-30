@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PublicStoragePath;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -159,7 +160,7 @@ abstract class Controller
     protected function authorizeNestedInventoryPricing(Request $request, array $items): void
     {
         foreach ($items as $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 continue;
             }
 
@@ -186,7 +187,7 @@ abstract class Controller
 
             $value = $request->input($key);
 
-            if (!is_string($value) || trim($value) === '') {
+            if (! is_string($value) || trim($value) === '') {
                 continue;
             }
 
@@ -196,6 +197,10 @@ abstract class Controller
                 $data[$targetKey] = $storedPath;
 
                 return;
+            }
+
+            if ($key !== $targetKey && ! array_key_exists($targetKey, $data)) {
+                $data[$targetKey] = PublicStoragePath::normalize($value) ?? $value;
             }
         }
     }
@@ -220,13 +225,16 @@ abstract class Controller
             }
 
             if ($key !== $targetKey && ! array_key_exists($targetKey, $data)) {
-                $data[$targetKey] = $value;
+                $data[$targetKey] = PublicStoragePath::normalize($value) ?? $value;
             }
         }
     }
 
     protected function replaceStoredImage(?string $currentPath, ?string $newPath): void
     {
+        $currentPath = PublicStoragePath::normalize($currentPath);
+        $newPath = PublicStoragePath::normalize($newPath);
+
         if ($currentPath && $newPath && $currentPath !== $newPath) {
             $this->deleteStoredImage($currentPath);
         }
@@ -234,7 +242,9 @@ abstract class Controller
 
     protected function deleteStoredImage(?string $path): void
     {
-        if (! is_string($path) || trim($path) === '') {
+        $path = PublicStoragePath::normalize($path);
+
+        if ($path === null) {
             return;
         }
 
@@ -250,15 +260,17 @@ abstract class Controller
 
     protected function publicFileUrl(?string $path): ?string
     {
-        if (! is_string($path) || trim($path) === '') {
+        $normalizedPath = PublicStoragePath::normalize($path);
+
+        if ($normalizedPath === null) {
             return null;
         }
 
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
+        if (PublicStoragePath::isExternalUrl($normalizedPath) || Str::startsWith($normalizedPath, ['http://', 'https://'])) {
+            return $normalizedPath;
         }
 
-        return Storage::disk('public')->url(ltrim($path, '/'));
+        return Storage::disk('public')->url($normalizedPath);
     }
 
     protected function exposePublicFileUrl(Model|EloquentCollection $resource, string $pathKey, ?string $aliasKey = null): Model|EloquentCollection
@@ -280,7 +292,7 @@ abstract class Controller
 
     private function storeBase64Image(string $value, string $directory): ?string
     {
-        if (!preg_match('/^data:image\/(?P<extension>[a-zA-Z0-9.+-]+);base64,(?P<data>.+)$/', trim($value), $matches)) {
+        if (! preg_match('/^data:image\/(?P<extension>[a-zA-Z0-9.+-]+);base64,(?P<data>.+)$/', trim($value), $matches)) {
             return null;
         }
 
@@ -297,7 +309,7 @@ abstract class Controller
             default => $extension,
         };
 
-        if (!in_array($extension, ['jpg', 'png', 'webp', 'gif', 'bmp', 'svg'], true)) {
+        if (! in_array($extension, ['jpg', 'png', 'webp', 'gif', 'bmp', 'svg'], true)) {
             $extension = 'jpg';
         }
 
