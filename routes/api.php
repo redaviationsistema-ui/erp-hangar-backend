@@ -8,6 +8,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
+use App\Http\Controllers\ManualController;
+use App\Http\Controllers\ManualSearchController;
 use App\Http\Controllers\MedicionController;
 use App\Http\Controllers\MotorController;
 use App\Http\Controllers\NdtController;
@@ -21,6 +23,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::get('/user', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
         Route::apiResource('areas', AreaController::class);
         Route::apiResource('aeronaves', AeronaveController::class)->parameters([
             'aeronaves' => 'aeronave',
@@ -28,6 +33,14 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('motores', MotorController::class)->parameters([
             'motores' => 'motor',
         ]);
+        Route::apiResource('manuales', ManualController::class)->parameters([
+            'manuales' => 'manuale',
+        ]);
+        Route::get('/manuales/source-files', [ManualController::class, 'sourceFiles']);
+        Route::post('/manuales/import-source', [ManualController::class, 'importFromSource']);
+        Route::post('/manuales/{manuale}/process-source', [ManualController::class, 'processSource']);
+        Route::get('/manuales-busqueda', [ManualSearchController::class, 'search']);
+        Route::get('/discrepancias/{discrepancia}/contexto-manual', [ManualSearchController::class, 'discrepancy']);
         Route::get('/ata', [AtaController::class, 'index']);
         Route::get('/ata/chapters/{chapter}/subchapters', [AtaController::class, 'subchapters']);
         Route::get('/ata/subchapters/{subchapter}', [AtaController::class, 'showSubchapter']);

@@ -41,24 +41,62 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'token' => $user->createToken('api-token')->plainTextToken,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'rol' => $user->rol,
-                'area_id' => $user->area_id ?? 0,
-                'area' => $user->area_id ? [
-                    'id' => $user->area_id,
-                    'codigo' => $user->area_codigo,
-                    'numero' => $user->area_numero,
-                    'nombre' => $user->area_nombre,
-                ] : [
-                    'id' => 0,
-                    'codigo' => 'GENERAL',
-                    'numero' => '00',
-                    'nombre' => 'GENERAL',
-                ],
-            ],
+            'user' => $this->serializeUser($user),
         ]);
+    }
+
+    public function me(Request $request)
+    {
+        $user = User::query()
+            ->leftJoin('areas as area', 'area.id', '=', 'users.area_id')
+            ->select([
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.area_id',
+                'users.rol',
+                'area.codigo as area_codigo',
+                'area.numero as area_numero',
+                'area.nombre as area_nombre',
+            ])
+            ->where('users.id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'user' => $this->serializeUser($user),
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesion cerrada correctamente.',
+        ]);
+    }
+
+    private function serializeUser(object $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'rol' => $user->rol,
+            'area_id' => $user->area_id ?? 0,
+            'area' => $user->area_id ? [
+                'id' => $user->area_id,
+                'codigo' => $user->area_codigo,
+                'numero' => $user->area_numero,
+                'nombre' => $user->area_nombre,
+            ] : [
+                'id' => 0,
+                'codigo' => 'GENERAL',
+                'numero' => '00',
+                'nombre' => 'GENERAL',
+            ],
+        ];
     }
 }

@@ -18,6 +18,7 @@ class OrdenSeeder extends Seeder
     {
         $user = User::firstOrFail();
         $this->seedAvionicsExample($user);
+        $this->seedHangarMotorExample($user);
         $this->seedRequestedExamples($user);
     }
 
@@ -155,6 +156,109 @@ class OrdenSeeder extends Seeder
                     'valor' => '28.4',
                     'unidad' => 'V',
                 ],
+            ],
+        ]);
+    }
+
+    private function seedHangarMotorExample(User $user): void
+    {
+        $area = Area::where('codigo', 'HANG')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'HANG')->firstOrFail();
+        $motor = Motor::where('numero_serie', 'P-73548')->first();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-HANG25-097'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'motor_id' => $motor?->id,
+                'consecutivo' => 97,
+                'anio' => 2025,
+                'fecha' => '2025-07-21',
+                'cliente' => '-',
+                'matricula' => 'XA-MMN',
+                'aeronave_modelo' => 'LEARJET 35A',
+                'aeronave_serie' => '221',
+                'descripcion' => 'Remocion e instalacion del motor #2',
+                'trabajo_descripcion' => 'Remocion e instalacion del motor #2.',
+                'componente_descripcion' => 'Motor',
+                'componente_modelo' => 'TFE731-2',
+                'componente_numero_serie' => 'P-73548',
+                'tipo_tarea' => 'Remocion / Instalacion',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realizo remocion, configuracion e instalacion del motor #2, atendiendo discrepancias detectadas hasta dejar el sistema operativo.',
+                'tecnico_responsable' => 'Tec. Juan Martin Carrillo Trejo',
+                'inspector' => 'Tec. Juan Martin Carrillo Trejo',
+                'fecha_inicio' => '2025-07-21',
+                'fecha_termino' => '2025-08-02',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                ['titulo' => 'Ingreso y desmontaje inicial', 'descripcion' => 'Fecha: 21/07/25. Ingreso de aeronave 12:10, remocion de cowling, air intake, aft body y desmontaje del motor.', 'orden' => 1, 'tipo' => 'REMOCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 1140, 'estado' => 'completada', 'tecnico' => 'Tec. Juan Martin Carrillo Trejo'],
+                ['titulo' => 'Configuracion de accesorios', 'descripcion' => 'Fecha: 22/07/25. Se remueven accesorios para configuracion en nuevo motor.', 'orden' => 2, 'tipo' => 'CONFIGURACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 1500, 'estado' => 'completada', 'tecnico' => 'Tec. Juan Martin Carrillo Trejo'],
+                ['titulo' => 'Cambio de gearbox y remocion adicional', 'descripcion' => 'Fecha: 23/07/25. Se termina de remover accesorios y se continua con componentes asociados al cambio de gearbox.', 'orden' => 3, 'tipo' => 'CONFIGURACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 1080, 'estado' => 'completada', 'tecnico' => 'Tec. Juan Martin Carrillo Trejo'],
+                ['titulo' => 'Limpieza exterior del motor', 'descripcion' => 'Fecha: 24/07/25. Identificacion de componentes para personal de Excel y limpieza exterior para preservacion.', 'orden' => 4, 'tipo' => 'LIMPIEZA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 990, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin'],
+                ['titulo' => 'Proteccion de arnes', 'descripcion' => 'Fecha: 25/07/25. Limpieza de motor y mantenimiento del arnes con cinta de fibra de vidrio.', 'orden' => 5, 'tipo' => 'MANTENIMIENTO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 720, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Manuel Huertas Garrido'],
+                ['titulo' => 'Conclusion de configuracion', 'descripcion' => 'Fecha: 30/07/25. Se concluye la configuracion del motor por personal de Excel con apoyo de mantenimiento.', 'orden' => 6, 'tipo' => 'CONFIGURACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 540, 'estado' => 'completada', 'tecnico' => 'Tec. Carlos Rodolfo Gonzales Rojas 202501321'],
+                ['titulo' => 'Instalacion de forward mount', 'descripcion' => 'Fecha: 31/07/25. Instalacion de forward mount en aeronave y after mount en motor.', 'orden' => 7, 'tipo' => 'INSTALACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 540, 'estado' => 'completada', 'tecnico' => 'Tec. Carlos Rodolfo Gonzales Rojas 202501321'],
+                ['titulo' => 'Instalacion de montante aft', 'descripcion' => 'Fecha: 31/07/25. Se realiza instalacion de montante aft.', 'orden' => 8, 'tipo' => 'INSTALACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Manuel Huertas Garrido'],
+                ['titulo' => 'Recarga de aceite', 'descripcion' => 'Fecha: 31/07/25. Se recarga aceite.', 'orden' => 9, 'tipo' => 'SERVICIO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 15, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Manuel Huertas Garrido'],
+                ['titulo' => 'Montaje del motor en aeronave', 'descripcion' => 'Fecha: 31/07/25. Se monta el motor, se alinean pernos de montantes y se inicia conexion de arnes y lineas.', 'orden' => 10, 'tipo' => 'INSTALACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 525, 'estado' => 'completada', 'tecnico' => 'Tec. Juan Martin Carrillo Trejo'],
+                ['titulo' => 'Conexion y corrida inicial', 'descripcion' => 'Fecha: 31/07/25. Conexion de accesorios, armado final y arranque sin encender para circular aceite y combustible.', 'orden' => 11, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 1050, 'estado' => 'completada', 'tecnico' => 'Tec. Juan Martin Carrillo Trejo'],
+                ['titulo' => 'Diagnostico de falla ITT', 'descripcion' => 'Fecha: 31/07/25. Se detecta falla en indicacion ITT y se identifica terminal chromel en mal estado.', 'orden' => 12, 'tipo' => 'DIAGNOSTICO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin'],
+                ['titulo' => 'Reemplazo de terminal y aislamiento', 'descripcion' => 'Fecha: 02/08/25. Reemplazo de terminal y aislamiento de placa de terminal.', 'orden' => 13, 'tipo' => 'REPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin'],
+                ['titulo' => 'Intercambio de valvula shutoff', 'descripcion' => 'Fecha: 02/08/25. Valvula shutoff intercambiada por una brindada por cliente.', 'orden' => 14, 'tipo' => 'REEMPLAZO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 90, 'estado' => 'completada', 'tecnico' => 'Tec. Carlos Rodolfo Gonzales Rojas 202501321'],
+                ['titulo' => 'Reemplazo de conector flow control', 'descripcion' => 'Fecha: 02/08/25. Se toma cannon de XA-VEE y se realiza la conexion.', 'orden' => 15, 'tipo' => 'REEMPLAZO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Jesus Adrian Monroy Blanco'],
+                ['titulo' => 'Cambio de generador', 'descripcion' => 'Fecha: 02/08/25. Se retira generador prestado de XA-VEE y se instala uno entregado por cliente.', 'orden' => 16, 'tipo' => 'REEMPLAZO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 360, 'estado' => 'completada', 'tecnico' => 'Tec. Jesus Adrian Monroy Blanco'],
+                ['titulo' => 'Analisis de oscilacion de fuel flow', 'descripcion' => 'Fecha: 02/08/25. Se detecta oscilacion en indicacion de flujo de combustible.', 'orden' => 17, 'tipo' => 'DIAGNOSTICO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin'],
+            ],
+            'discrepancias' => [
+                ['item' => '01', 'descripcion' => 'Al remover componentes se detectan ambas bujias en mal estado.', 'accion_correctiva' => 'Se notifica al cliente; entrega una bujia el 29/07/25 y se instala junto con la mejor bujia disponible del motor removido.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-22', 'fecha_termino' => '2025-07-30', 'horas_hombre' => 0.33, 'componente_numero_parte_off' => '3074541-4', 'componente_numero_serie_off' => 'UNK', 'componente_numero_parte_on' => '3074541-4', 'componente_numero_serie_on' => 'CH3162', 'observaciones' => 'PLUG IGNITER proporcionado por cliente.'],
+                ['item' => '02', 'descripcion' => 'Al momento de remover bleed air valve se encuentran faltantes gasket y seal C.', 'accion_correctiva' => 'Se solicitan refacciones y se instala la valvula con empaques nuevos, dejando el sistema operativo.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-25', 'fecha_termino' => '2025-07-29', 'horas_hombre' => 2.00],
+                ['item' => '03', 'descripcion' => 'Para la instalacion del arnes electrico fue necesaria la aplicacion de cinta protectora de fibra de vidrio.', 'accion_correctiva' => 'Se termina de enrutar el arnes electrico con cinta de fibra de vidrio.', 'status' => 'abierta', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-26', 'horas_hombre' => 2.00, 'observaciones' => 'Tecnico: Tec. Omar Jair Montoya Landin.'],
+                ['item' => '04', 'descripcion' => 'Se indica remocion de FWD MOUNT y AFT MOUNT para inspeccion NDT por taller externo.', 'accion_correctiva' => 'Se envian a inspeccion NDT y se reinstalan despues de recibir componentes.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-29', 'fecha_termino' => '2025-07-31', 'horas_hombre' => 5.00, 'observaciones' => 'Tecnico: Tec. Jose Alberto Flores Alcantara.'],
+                ['item' => '05', 'descripcion' => 'Para instalacion de tanque de aceite se requiere reemplazo de o-ring en tubo.', 'accion_correctiva' => 'Se obtienen o-rings M83248-1-019 y se realiza la instalacion por personal de Excel.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-29', 'fecha_termino' => '2025-07-29', 'horas_hombre' => 0.50, 'observaciones' => 'Tecnico: Personal de Excel.'],
+                ['item' => '06', 'descripcion' => 'Para realizar instalacion de FWD MOUNT se requiere aplicacion de sellante.', 'accion_correctiva' => 'Se genera requisicion; al no contar con el sellante inicial se aplica PR1422 A 1/2.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-30', 'fecha_termino' => '2025-07-31', 'horas_hombre' => 1.50],
+                ['item' => '07', 'descripcion' => 'Se requiere reemplazo de filtro de combustible.', 'accion_correctiva' => 'Se reemplaza por filtro brindado por almacen hangar.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-30', 'fecha_termino' => '2025-07-30', 'horas_hombre' => 1.50, 'componente_numero_parte_off' => '897513-1 (038493-12)', 'componente_numero_serie_off' => 'UNK', 'componente_numero_parte_on' => '897513-1 (038493-12)', 'componente_numero_serie_on' => 'UNK', 'observaciones' => 'FILTER ELEMENT brindado por almacen hangar.'],
+                ['item' => '08', 'descripcion' => 'Para instalacion de bomba hidraulica fue necesario reemplazo de gasket por roturas.', 'accion_correctiva' => 'Se instala nuevo gasket AN4044-1 brindado por almacen hangar.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-30', 'fecha_termino' => '2025-07-30', 'horas_hombre' => 0.50, 'componente_numero_parte_off' => '-', 'componente_numero_serie_off' => '-', 'componente_numero_parte_on' => 'AN4044-1', 'componente_numero_serie_on' => 'NA', 'observaciones' => 'Gasket obtenido de almacen general.'],
+                ['item' => '09', 'descripcion' => 'Arreglo de conexion terminal ITT Chromel.', 'accion_correctiva' => 'Se realiza aislamiento de placa de conexion y se reemplaza terminal Chromel en mal estado.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-07-31', 'fecha_termino' => '2025-08-01', 'horas_hombre' => 2.00, 'componente_numero_parte_off' => '54368-2', 'componente_numero_serie_off' => 'NA', 'componente_numero_parte_on' => '54368-2', 'componente_numero_serie_on' => 'NA', 'observaciones' => 'Terminal tomada de motor removido XA-MMN.'],
+                ['item' => '10', 'descripcion' => 'Se detecta oscilacion en indicacion de fuel flow y se requiere reemplazo de switch.', 'accion_correctiva' => 'Se reemplaza el switch obtenido de almacen general.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-08-01', 'fecha_termino' => '2025-08-01', 'horas_hombre' => 1.00, 'componente_numero_parte_off' => '6600097-4', 'componente_numero_serie_off' => '2380', 'componente_numero_parte_on' => '6600097-4', 'componente_numero_serie_on' => '794', 'observaciones' => 'FLOWMETER obtenido de almacen general.'],
+                ['item' => '11', 'descripcion' => 'Durante pruebas de motor el generador RH prestado no entra en linea.', 'accion_correctiva' => 'Cliente entrega generador, se realizan pruebas y el sistema queda operativo.', 'status' => 'cerrada', 'inspector' => 'Tec. Juan Martin Carrillo Trejo', 'fecha_inicio' => '2025-08-01', 'fecha_termino' => '2025-08-01', 'horas_hombre' => 5.00, 'componente_numero_parte_off' => '30B107-19-A (6608201-9)', 'componente_numero_serie_off' => '1592', 'componente_numero_parte_on' => '30B107-19-A (6608201-9)', 'componente_numero_serie_on' => '2187', 'observaciones' => 'Generador entregado por cliente.'],
+                ['item' => '12', 'descripcion' => 'Durante corrida de motor 02 se detecta que la valvula shut off bleed air no se mantiene cerrada y genera humo en cabina.', 'accion_correctiva' => 'Se reemplaza valvula proporcionada por cliente y se realiza corrida confirmando operacion correcta.', 'status' => 'cerrada', 'inspector' => 'Tec. Omar Jair Montoya Landin', 'fecha_inicio' => '2025-08-02', 'fecha_termino' => '2025-08-02', 'horas_hombre' => 1.50, 'componente_numero_parte_off' => '6600201-1', 'componente_numero_serie_off' => '2145', 'componente_numero_parte_on' => '6600201-1', 'componente_numero_serie_on' => '622', 'observaciones' => 'Valvula brindada por cliente.'],
+                ['item' => '13', 'descripcion' => 'Durante instalacion de valvula shut off se observa cable de cannon abierto de valvula flow.', 'accion_correctiva' => 'Se toma cannon de XA-VEE y se realiza conexion quedando operativa la valvula.', 'status' => 'cerrada', 'inspector' => 'Insp. Ruben Damian Rodela 201325866', 'fecha_inicio' => '2025-08-02', 'fecha_termino' => '2025-08-02', 'horas_hombre' => 2.00, 'componente_numero_parte_off' => 'PT06E-8-4S', 'componente_numero_serie_off' => 'UNK', 'componente_numero_parte_on' => 'PT06E-8-4S', 'componente_numero_serie_on' => 'UNK', 'observaciones' => 'Cannon flow control tomado de XA-VEE.'],
+            ],
+            'refacciones' => [
+                ['item' => 'R1', 'solicitante_fecha' => '2025-07-22', 'nombre' => 'PLUG IGNITOR', 'descripcion' => 'CAMBIO POR CONDICION', 'cantidad' => 2, 'numero_parte' => '3074541-4', 'status' => 'ESPERA / ENTREGADO 01', 'certificado_conformidad' => '-', 'area_procedencia' => 'CLIENTE', 'recibe_fecha' => '2025-07-30'],
+                ['item' => 'R2', 'solicitante_fecha' => '2025-07-25', 'nombre' => 'GASKET', 'descripcion' => 'INSTALACION DE VALVULA BLEED AIR NACELLE', 'cantidad' => 1, 'numero_parte' => '67186', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN EXCEL', 'recibe_fecha' => '2025-07-29'],
+                ['item' => 'R3', 'solicitante_fecha' => '2025-07-25', 'nombre' => 'SEAL C', 'descripcion' => 'INSTALACION DE VALVULA BLEED AIR NACELLE', 'cantidad' => 1, 'numero_parte' => '612A51-0038-2', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN GENERAL', 'recibe_fecha' => '2025-07-25'],
+                ['item' => 'R4', 'solicitante_fecha' => '2025-07-25', 'nombre' => 'GASKET', 'descripcion' => 'INSTALACION DE VALVULA BLEED AIR NACELLE', 'cantidad' => 1, 'numero_parte' => '2655118-1', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN GENERAL', 'recibe_fecha' => '2025-07-25'],
+                ['item' => 'R5', 'solicitante_fecha' => '2025-07-25', 'nombre' => 'GASKET', 'descripcion' => 'INSTALACION DE STARTER', 'cantidad' => 1, 'numero_parte' => 'AN4047-1', 'status' => 'SE ENTREGA JUNTO CON ENSAMBLE POR PARTE DE EXCEL', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN EXCEL', 'recibe_fecha' => '2025-07-28'],
+                ['item' => 'R6', 'solicitante_fecha' => '2025-07-25', 'nombre' => 'GASKET', 'descripcion' => 'INSTALACION DE GENERATOR', 'cantidad' => 1, 'numero_parte' => 'AN4047-1', 'status' => 'SE ENTREGA JUNTO CON ENSAMBLE POR PARTE DE EXCEL', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN EXCEL', 'recibe_fecha' => '2025-07-28'],
+                ['item' => 'R7', 'solicitante_fecha' => '2025-07-29', 'nombre' => 'GASKET', 'descripcion' => 'INSTALACION DE BOMBA DE HYD', 'cantidad' => 1, 'numero_parte' => 'AN4044-1', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN HANGAR', 'recibe_fecha' => '2025-07-30'],
+                ['item' => 'R8', 'solicitante_fecha' => '2025-07-29', 'nombre' => 'ORING', 'descripcion' => 'INSTALACION DE TANQUE DE ACEITE', 'cantidad' => 2, 'numero_parte' => 'M83248-1-019', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN HANGAR', 'recibe_fecha' => '2025-07-29'],
+                ['item' => 'R9', 'solicitante_fecha' => '2025-07-30', 'nombre' => 'FILTRO - ELEMENT', 'descripcion' => 'INSTALACION BOMBA Y FCU', 'cantidad' => 1, 'numero_parte' => '897513-1 (038493-12)', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN HANGAR', 'recibe_fecha' => '2025-07-30'],
+                ['item' => 'R10', 'solicitante_fecha' => '2025-08-01', 'nombre' => 'FLOWMETER', 'descripcion' => 'FLUCTUACION INDICACION DE FUEL FLOW', 'cantidad' => 1, 'numero_parte' => '6600097-4', 'status' => 'ENTREGADO', 'certificado_conformidad' => null, 'area_procedencia' => 'ALMACEN GENERAL', 'recibe_fecha' => '2025-08-01'],
+                ['item' => 'R11', 'solicitante_fecha' => '2025-08-01', 'nombre' => 'TERMINAL CHROMEL PARA CONEXION DE INDICACION DE ITT', 'descripcion' => 'TERMINAL EN MAL ESTADO', 'cantidad' => 1, 'numero_parte' => '54368-2', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'TOMADO DE XA-MMN MOTOR REMOVIDO', 'recibe_fecha' => '2025-08-01'],
+            ],
+            'consumibles' => [
+                ['item' => 'C1', 'solicitante_fecha' => '2025-07-23', 'nombre' => 'ACEITE 254', 'descripcion' => 'REMOCION DE MOTOR', 'cantidad' => 10, 'numero_parte' => 'MIL-PRF-23699', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL', 'recibe_fecha' => '2025-07-23'],
+                ['item' => 'C2', 'solicitante_fecha' => '2025-07-23', 'nombre' => 'CINTA AISLANTE FIBRA DE VIDRIO 1/2 IN O 1 IN', 'descripcion' => 'ARNES ELECTRICO', 'cantidad' => 1, 'numero_parte' => 'SCOTCH 27 3M', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL', 'recibe_fecha' => '2025-07-28'],
+                ['item' => 'C3', 'solicitante_fecha' => '2025-07-30', 'nombre' => 'SELLANTE (TUBO DE 6 ONZAS)', 'descripcion' => 'INSTALACION FWD MOUNT (BANANA)', 'cantidad' => 2, 'numero_parte' => 'DAPCO 2100 / DAPCO 2200', 'status' => 'NO ENTREGADO', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'C4', 'solicitante_fecha' => '2025-07-31', 'nombre' => 'SELLANTE', 'descripcion' => 'INSTALACION FWD MOUNT (BANANA)', 'cantidad' => 200, 'numero_parte' => 'PR1422 A 1/2', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN HANGAR', 'recibe_fecha' => '2025-07-31'],
+            ],
+            'ndt' => [
+                ['item' => '1', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 1, 'sub_componente' => 'FWD MOUNT', 'numero_parte' => '2651013', 'numero_serie' => '5981', 'envio_a' => 'NAPSA', 'recepcion' => '03/02/2026 MGMC', 'resultado' => 'Recepcion MGMC'],
+                ['item' => '2', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 1, 'sub_componente' => 'BOLT FWD MOUNT UPPER (TO BEAM)', 'numero_parte' => '2651026-3 / 70315-10', 'numero_serie' => 'UNK', 'envio_a' => 'NAPSA', 'recepcion' => '03/02/2026 MGMC', 'resultado' => 'Recepcion MGMC'],
+                ['item' => '3', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 1, 'sub_componente' => 'BOLT FWD MOUNT LOWER (TO BEAM)', 'numero_parte' => '2651026-3 / 70315-10', 'numero_serie' => 'UNK', 'envio_a' => 'NAPSA', 'recepcion' => '03/02/2026 MGMC', 'resultado' => 'Recepcion MGMC'],
+                ['item' => '4', 'tipo_prueba' => 'LIQUIDOS PENETRANTES', 'cantidad' => 1, 'sub_componente' => 'FWD MOUNT SHOCK UPPER', 'numero_parte' => 'LM-833-3', 'numero_serie' => '0-105'],
+                ['item' => '5', 'tipo_prueba' => 'LIQUIDOS PENETRANTES', 'cantidad' => 1, 'sub_componente' => 'FWD MOUNT SHOCK LOWER', 'numero_parte' => 'LM-833-3', 'numero_serie' => '0-104'],
+                ['item' => '6', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 2, 'sub_componente' => 'BOLT FWD MOUNT SHOCK', 'numero_parte' => 'NAS1307-3H', 'numero_serie' => 'UNK', 'envio_a' => 'NAPSA', 'recepcion' => '03/02/2026 MGMC', 'resultado' => 'Recepcion MGMC'],
+                ['item' => '7', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 1, 'sub_componente' => 'AFT MOUNT', 'numero_parte' => '2651031-2', 'numero_serie' => '777', 'envio_a' => 'NAPSA', 'recepcion' => '03/02/2026 MGMC', 'resultado' => 'Recepcion MGMC'],
+                ['item' => '8', 'tipo_prueba' => 'PARTICULAS MAGNETICAS', 'cantidad' => 1, 'sub_componente' => 'BOLT AFT MOUNT', 'numero_parte' => '2651027-1', 'numero_serie' => 'UNK'],
             ],
         ]);
     }

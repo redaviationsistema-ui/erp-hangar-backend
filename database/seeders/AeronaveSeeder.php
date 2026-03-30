@@ -19,5 +19,17 @@ class AeronaveSeeder extends Seeder
                 'estado' => 'activa',
             ]
         );
+
+        Aeronave::updateOrCreate(
+            ['matricula' => 'XA-MMN'],
+            [
+                'cliente' => '-',
+                'fabricante' => 'Learjet',
+                'modelo' => '35A',
+                'numero_serie' => '221',
+                'estado' => 'activa',
+                'notas' => 'Seed basado en orden CESA-HANG25-097.',
+            ]
+        );
     }
 }

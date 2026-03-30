@@ -4,7 +4,7 @@ services:
     env: php
     plan: free
     buildCommand: |
-      composer install
-      php artisan key:generate
+      composer install --no-dev --optimize-autoloader
+      php artisan optimize:clear
       php artisan migrate --force
     startCommand: php artisan serve --host 0.0.0.0 --port $PORT

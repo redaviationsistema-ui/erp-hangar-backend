@@ -30,4 +30,9 @@ class AtaSubchapter extends Model
     {
         return $this->hasMany(Orden::class, 'ata_subchapter_id');
     }
+
+    public function manualChunks()
+    {
+        return $this->hasMany(ManualChunk::class, 'ata_subchapter_id');
+    }
 }

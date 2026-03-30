@@ -20,4 +20,9 @@ class AtaChapter extends Model
     {
         return $this->hasMany(Orden::class);
     }
+
+    public function manualChunks()
+    {
+        return $this->hasMany(ManualChunk::class, 'ata_chapter_id');
+    }
 }

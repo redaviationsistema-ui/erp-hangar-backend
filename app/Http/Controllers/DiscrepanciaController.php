@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\DiscrepanciaResource;
 use App\Models\Discrepancia;
 use App\Support\SchemaPayload;
 use Illuminate\Http\Request;
@@ -40,9 +41,10 @@ class DiscrepanciaController extends Controller
                 ->orderBy('id')
                 ->get();
 
-            $this->exposePublicFileUrl($items, 'imagen_path', 'foto');
-
-            return ['success' => true, 'data' => $items];
+            return [
+                'success' => true,
+                'data' => DiscrepanciaResource::collection($items)->resolve($request),
+            ];
         });
 
         return response()->json($payload);
@@ -64,18 +66,22 @@ class DiscrepanciaController extends Controller
         $this->bustCache();
 
         $discrepancia = Discrepancia::create(SchemaPayload::forModel(new Discrepancia(), $data))->load('orden');
-        $this->exposePublicFileUrl($discrepancia, 'imagen_path', 'foto');
 
-        return response()->json(['success' => true, 'data' => $discrepancia], 201);
+        return response()->json([
+            'success' => true,
+            'data' => DiscrepanciaResource::make($discrepancia)->resolve($request),
+        ], 201);
     }
 
     public function show(Discrepancia $discrepancia)
     {
         $this->authorizeOrderArea(request(), $discrepancia);
+        $discrepancia->load('orden');
 
-        $this->exposePublicFileUrl($discrepancia, 'imagen_path', 'foto');
-
-        return response()->json(['success' => true, 'data' => $discrepancia->load('orden')]);
+        return response()->json([
+            'success' => true,
+            'data' => DiscrepanciaResource::make($discrepancia)->resolve(request()),
+        ]);
     }
 
     public function update(Request $request, Discrepancia $discrepancia)
@@ -100,9 +106,11 @@ class DiscrepanciaController extends Controller
         $this->bustCache();
 
         $discrepancia->load('orden');
-        $this->exposePublicFileUrl($discrepancia, 'imagen_path', 'foto');
 
-        return response()->json(['success' => true, 'data' => $discrepancia]);
+        return response()->json([
+            'success' => true,
+            'data' => DiscrepanciaResource::make($discrepancia)->resolve($request),
+        ]);
     }
 
     public function destroy(Discrepancia $discrepancia)

@@ -186,6 +186,11 @@ class AtaChapterSeeder extends Seeder
             ['codigo' => '80', 'descripcion' => 'Starting', 'sub' => [
                 ['codigo' => '80-00', 'descripcion' => 'General'],
             ]],
+            ['codigo' => '100', 'descripcion' => 'Documentacion Tecnica ATA 100', 'sub' => [
+                ['codigo' => '100-00', 'descripcion' => 'General'],
+                ['codigo' => '100-10', 'descripcion' => 'Manual de mantenimiento'],
+                ['codigo' => '100-20', 'descripcion' => 'Procedimientos e inspecciones'],
+            ]],
 
         ];
 

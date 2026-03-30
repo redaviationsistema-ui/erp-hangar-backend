@@ -25,4 +25,9 @@ class Aeronave extends Model
     {
         return $this->hasManyThrough(Orden::class, Motor::class, 'aeronave_id', 'motor_id');
     }
+
+    public function manuales()
+    {
+        return $this->hasMany(Manual::class);
+    }
 }
