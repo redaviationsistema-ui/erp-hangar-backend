@@ -200,6 +200,31 @@ abstract class Controller
         }
     }
 
+    protected function storeIncomingImageFromData(array &$data, string $targetKey, string $directory, array $aliases = []): void
+    {
+        $keys = array_values(array_unique([$targetKey, ...$aliases]));
+
+        foreach ($keys as $key) {
+            $value = $data[$key] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            $storedPath = $this->storeBase64Image($value, $directory);
+
+            if ($storedPath !== null) {
+                $data[$targetKey] = $storedPath;
+
+                return;
+            }
+
+            if ($key !== $targetKey && ! array_key_exists($targetKey, $data)) {
+                $data[$targetKey] = $value;
+            }
+        }
+    }
+
     protected function replaceStoredImage(?string $currentPath, ?string $newPath): void
     {
         if ($currentPath && $newPath && $currentPath !== $newPath) {

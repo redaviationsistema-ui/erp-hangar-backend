@@ -281,8 +281,31 @@ class OrdenController extends Controller
 
         foreach ($items as $item) {
             $related = $orden->{$relation}()->getRelated();
+            $item = $this->normalizeCollectionItem($relation, $item);
             $orden->{$relation}()->create(SchemaPayload::forModel($related, $item));
         }
+    }
+
+    private function normalizeCollectionItem(string $relation, mixed $item): array
+    {
+        if (! is_array($item)) {
+            return [];
+        }
+
+        $imageMappings = [
+            'tareas' => ['foto_path', 'tareas', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+            'discrepancias' => ['imagen_path', 'discrepancias', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+            'ndt' => ['evidencia_path', 'ndt', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+            'talleresExternos' => ['foto_path', 'talleres-externos', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+            'mediciones' => ['imagen_path', 'mediciones', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+        ];
+
+        if (array_key_exists($relation, $imageMappings)) {
+            [$targetKey, $directory, $aliases] = $imageMappings[$relation];
+            $this->storeIncomingImageFromData($item, $targetKey, $directory, $aliases);
+        }
+
+        return $item;
     }
 
     private function summaryColumnsWithJoins(bool $withAta): array
