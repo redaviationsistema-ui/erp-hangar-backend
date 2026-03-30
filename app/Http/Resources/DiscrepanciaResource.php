@@ -5,11 +5,14 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DiscrepanciaResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $imageUrl = $this->resolveImageUrl($this->imagen_path);
+
         return [
             'id' => $this->id,
             'orden_id' => $this->orden_id,
@@ -22,12 +25,8 @@ class DiscrepanciaResource extends JsonResource
             'fecha_termino' => $this->fecha_termino?->toDateString(),
             'horas_hombre' => $this->horas_hombre,
             'imagen_archivo' => $this->imagen_path,
-            'imagen_path' => $this->imagen_path
-                ? Storage::disk('public')->url($this->imagen_path)
-                : null,
-            'foto' => $this->imagen_path
-                ? Storage::disk('public')->url($this->imagen_path)
-                : null,
+            'imagen_path' => $imageUrl,
+            'foto' => $imageUrl,
             'componente_numero_parte_off' => $this->componente_numero_parte_off,
             'componente_numero_serie_off' => $this->componente_numero_serie_off,
             'componente_numero_parte_on' => $this->componente_numero_parte_on,
@@ -45,5 +44,18 @@ class DiscrepanciaResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    private function resolveImageUrl(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 }

@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 abstract class Controller
@@ -177,7 +179,7 @@ abstract class Controller
             $uploadedFile = $request->file($key);
 
             if ($uploadedFile instanceof UploadedFile && $uploadedFile->isValid()) {
-                $data[$targetKey] = $uploadedFile->store($directory, 'public');
+                $data[$targetKey] = $this->storeUploadedImage($uploadedFile, $directory);
 
                 return;
             }
@@ -201,13 +203,22 @@ abstract class Controller
     protected function replaceStoredImage(?string $currentPath, ?string $newPath): void
     {
         if ($currentPath && $newPath && $currentPath !== $newPath) {
-            Storage::disk('public')->delete($currentPath);
+            $this->deleteStoredImage($currentPath);
         }
     }
 
     protected function deleteStoredImage(?string $path): void
     {
-        if ($path) {
+        if (! is_string($path) || trim($path) === '') {
+            return;
+        }
+
+        if ($this->isCloudinaryUrl($path)) {
+            $this->deleteCloudinaryAsset($path);
+            return;
+        }
+
+        if (! Str::startsWith($path, ['http://', 'https://'])) {
             Storage::disk('public')->delete($path);
         }
     }
@@ -266,8 +277,123 @@ abstract class Controller
         }
 
         $path = trim($directory, '/') . '/' . Str::uuid() . '.' . $extension;
+
+        if ($this->shouldUseCloudinary()) {
+            return $this->uploadToCloudinary($binary, $path);
+        }
+
         Storage::disk('public')->put($path, $binary);
 
         return $path;
+    }
+
+    private function storeUploadedImage(UploadedFile $uploadedFile, string $directory): string
+    {
+        $path = trim($directory, '/') . '/' . Str::uuid() . '.' . $uploadedFile->getClientOriginalExtension();
+
+        if ($this->shouldUseCloudinary()) {
+            return $this->uploadToCloudinary($uploadedFile->getContent(), $path);
+        }
+
+        return $uploadedFile->store($directory, 'public');
+    }
+
+    private function shouldUseCloudinary(): bool
+    {
+        return filled(config('services.cloudinary.cloud_name'))
+            && filled(config('services.cloudinary.api_key'))
+            && filled(config('services.cloudinary.api_secret'));
+    }
+
+    private function uploadToCloudinary(string $binary, string $path): string
+    {
+        $cloudName = (string) config('services.cloudinary.cloud_name');
+        $apiKey = (string) config('services.cloudinary.api_key');
+        $apiSecret = (string) config('services.cloudinary.api_secret');
+        $baseFolder = trim((string) config('services.cloudinary.folder', ''), '/');
+        $timestamp = time();
+        $relativeId = pathinfo(str_replace('\\', '/', $path), PATHINFO_DIRNAME);
+        $relativeId = trim($relativeId === '.' ? '' : $relativeId, '/')
+            . ($relativeId === '' ? '' : '/')
+            . pathinfo($path, PATHINFO_FILENAME);
+        $relativeId = trim($relativeId, '/');
+        $publicId = trim(($baseFolder !== '' ? $baseFolder . '/' : '') . $relativeId, '/');
+
+        $signature = $this->cloudinarySignature([
+            'public_id' => $publicId,
+            'timestamp' => $timestamp,
+        ], $apiSecret);
+
+        $response = Http::attach('file', $binary, basename($path))
+            ->asMultipart()
+            ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", [
+                'api_key' => $apiKey,
+                'public_id' => $publicId,
+                'timestamp' => $timestamp,
+                'signature' => $signature,
+            ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('No se pudo subir la imagen a Cloudinary.');
+        }
+
+        return (string) $response->json('secure_url');
+    }
+
+    private function deleteCloudinaryAsset(string $url): void
+    {
+        if (! $this->shouldUseCloudinary()) {
+            return;
+        }
+
+        $publicId = $this->extractCloudinaryPublicId($url);
+
+        if ($publicId === null) {
+            return;
+        }
+
+        $timestamp = time();
+        $apiSecret = (string) config('services.cloudinary.api_secret');
+        $apiKey = (string) config('services.cloudinary.api_key');
+        $cloudName = (string) config('services.cloudinary.cloud_name');
+        $signature = $this->cloudinarySignature([
+            'public_id' => $publicId,
+            'timestamp' => $timestamp,
+        ], $apiSecret);
+
+        Http::asForm()->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/destroy", [
+            'api_key' => $apiKey,
+            'public_id' => $publicId,
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+    }
+
+    private function cloudinarySignature(array $params, string $apiSecret): string
+    {
+        ksort($params);
+
+        $signatureBase = collect($params)
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->map(fn ($value, $key) => $key . '=' . $value)
+            ->implode('&');
+
+        return sha1($signatureBase . $apiSecret);
+    }
+
+    private function isCloudinaryUrl(string $path): bool
+    {
+        return Str::contains($path, 'res.cloudinary.com/');
+    }
+
+    private function extractCloudinaryPublicId(string $url): ?string
+    {
+        $normalized = strtok($url, '?') ?: $url;
+
+        if (! preg_match('#/image/upload/(?:v\d+/)?(?P<public_id>.+)\.(?:jpg|jpeg|png|webp|gif|bmp|svg)$#i', $normalized, $matches)) {
+            return null;
+        }
+
+        return $matches['public_id'] ?? null;
     }
 }
