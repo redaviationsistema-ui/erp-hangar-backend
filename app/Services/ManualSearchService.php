@@ -121,7 +121,10 @@ class ManualSearchService
                     ->when(! empty($filters['estado']), fn ($q) => $q->where('estado', $filters['estado']), fn ($q) => $q->where('estado', 'vigente'));
             })
             ->when(! empty($filters['ata_subchapter_id']), fn ($q) => $q->where('ata_subchapter_id', $filters['ata_subchapter_id']))
-            ->when(! empty($filters['ata_chapter_id']), fn ($q) => $q->where('ata_chapter_id', $filters['ata_chapter_id']))
+            ->when(
+                empty($filters['ata_subchapter_id']) && ! empty($filters['ata_chapter_id']),
+                fn ($q) => $q->where('ata_chapter_id', $filters['ata_chapter_id'])
+            )
             ->when(
                 empty($filters['ata_chapter_id']) && empty($filters['ata_subchapter_id']) && ! empty($ataHints),
                 fn ($q) => $q->whereIn('ata_chapter_id', $ataHints)

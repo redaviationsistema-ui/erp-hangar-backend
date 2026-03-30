@@ -35,12 +35,22 @@ class ManualSearchController extends Controller
         $discrepancia->load('orden');
 
         $orden = $discrepancia->orden;
-        $payload = $service->contextualizeDiscrepancy($discrepancia->descripcion, [
+        $filters = [
             'aeronave_modelo' => $orden?->aeronave_modelo,
-            'ata_chapter_id' => $orden?->ata_chapter_id,
-            'ata_subchapter_id' => $orden?->ata_subchapter_id,
+            'tipo_manual' => 'AMM',
             'estado' => 'vigente',
-        ]);
+        ];
+
+        if (! empty($orden?->ata_subchapter_id)) {
+            $filters['ata_subchapter_id'] = $orden->ata_subchapter_id;
+        } elseif (! empty($orden?->ata_chapter_id)) {
+            $filters['ata_chapter_id'] = $orden->ata_chapter_id;
+        }
+
+        $payload = $service->contextualizeDiscrepancy(
+            $discrepancia->descripcion,
+            $filters
+        );
 
         return response()->json([
             'success' => true,
