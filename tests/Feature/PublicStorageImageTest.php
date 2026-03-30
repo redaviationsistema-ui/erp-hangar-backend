@@ -21,7 +21,7 @@ class PublicStorageImageTest extends TestCase
         $payload = $resource->resolve(request());
 
         $this->assertSame('discrepancias/test.png', $payload['imagen_archivo']);
-        $this->assertStringEndsWith('/storage/discrepancias/test.png', $payload['imagen_path']);
+        $this->assertStringEndsWith('/public/storage/discrepancias/test.png', $payload['imagen_path']);
         $this->assertSame($payload['imagen_path'], $payload['foto']);
     }
 
@@ -37,7 +37,7 @@ class PublicStorageImageTest extends TestCase
         $payload = $resource->resolve(request());
 
         $this->assertSame('discrepancias/test.png', $payload['imagen_archivo']);
-        $this->assertStringEndsWith('/storage/discrepancias/test.png', $payload['imagen_path']);
+        $this->assertStringEndsWith('/public/storage/discrepancias/test.png', $payload['imagen_path']);
         $this->assertSame($payload['imagen_path'], $payload['foto_url']);
     }
 

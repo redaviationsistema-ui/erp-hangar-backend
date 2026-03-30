@@ -26,7 +26,7 @@ if (! app()->environment('production')) {
             'exists_public_disk' => Storage::disk('public')->exists($path),
             'storage_real' => storage_path('app/public/' . $path),
             'public_path' => public_path('storage/' . $path),
-            'url_publica' => asset('storage/' . $path),
+            'url_publica' => asset('public/storage/' . $path),
         ]);
     });
 

@@ -52,6 +52,11 @@ class PublicStoragePath
         return self::normalize($normalized) === $normalized;
     }
 
+    public static function url(string $path): string
+    {
+        return asset('public/storage/' . ltrim(str_replace('\\', '/', $path), '/'));
+    }
+
     private static function normalizeKnownStoragePath(string $value): ?string
     {
         return self::normalizePublicStoragePrefix($value)

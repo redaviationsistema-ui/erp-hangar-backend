@@ -79,7 +79,11 @@ class TareaController extends Controller
             'tiempo_estimado_min' => 'nullable|integer',
             'estado' => 'nullable|string|max:100',
             'tecnico' => 'nullable|string|max:255',
-            'foto_path' => 'nullable|string|max:255',
+            'foto_path' => 'nullable|string|max:2048',
+            'foto' => 'sometimes|nullable|image|max:5120',
+            'imagen' => 'sometimes|nullable|image|max:5120',
+            'image' => 'sometimes|nullable|image|max:5120',
+            'evidencia' => 'sometimes|nullable|image|max:5120',
         ]);
         $this->storeIncomingImage($request, $data, 'foto_path', 'tareas', [
             'foto',
@@ -133,7 +137,11 @@ class TareaController extends Controller
             'tiempo_estimado_min' => 'sometimes|nullable|integer',
             'estado' => 'sometimes|nullable|string|max:100',
             'tecnico' => 'sometimes|nullable|string|max:255',
-            'foto_path' => 'sometimes|nullable|string|max:255',
+            'foto_path' => 'sometimes|nullable|string|max:2048',
+            'foto' => 'sometimes|nullable|image|max:5120',
+            'imagen' => 'sometimes|nullable|image|max:5120',
+            'image' => 'sometimes|nullable|image|max:5120',
+            'evidencia' => 'sometimes|nullable|image|max:5120',
         ]);
         $this->storeIncomingImage($request, $data, 'foto_path', 'tareas', [
             'foto',

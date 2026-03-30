@@ -270,7 +270,7 @@ abstract class Controller
             return $normalizedPath;
         }
 
-        return Storage::disk('public')->url($normalizedPath);
+        return PublicStoragePath::url($normalizedPath);
     }
 
     protected function exposePublicFileUrl(Model|EloquentCollection $resource, string $pathKey, ?string $aliasKey = null): Model|EloquentCollection
@@ -329,7 +329,13 @@ abstract class Controller
         $path = trim($directory, '/') . '/' . Str::uuid() . '.' . $uploadedFile->getClientOriginalExtension();
 
         if ($this->shouldUseCloudinary()) {
-            return $this->uploadToCloudinary($uploadedFile->getContent(), $path);
+            $binary = file_get_contents($uploadedFile->getRealPath());
+
+            if ($binary === false) {
+                throw new RuntimeException('No se pudo leer la imagen subida.');
+            }
+
+            return $this->uploadToCloudinary($binary, $path);
         }
 
         return $uploadedFile->store($directory, 'public');
@@ -434,3 +440,4 @@ abstract class Controller
         return $matches['public_id'] ?? null;
     }
 }
+

@@ -77,7 +77,8 @@ class DiscrepanciaResource extends JsonResource
 
         return [
             'archivo' => $normalizedPath,
-            'url' => Storage::disk('public')->url($normalizedPath),
+            'url' => PublicStoragePath::url($normalizedPath),
         ];
     }
 }
+
