@@ -6,6 +6,14 @@ use Illuminate\Support\Str;
 
 class PublicStoragePath
 {
+    private const STORAGE_DIRECTORIES = [
+        'discrepancias',
+        'tareas',
+        'ndt',
+        'talleres-externos',
+        'mediciones',
+    ];
+
     public static function normalize(?string $value): ?string
     {
         if (! is_string($value)) {
@@ -25,12 +33,12 @@ class PublicStoragePath
                 return $value;
             }
 
-            $normalized = self::normalizePublicStoragePrefix($path);
+            $normalized = self::normalizeKnownStoragePath($path);
 
             return $normalized ?? $value;
         }
 
-        return self::normalizePublicStoragePrefix($value) ?? ltrim($value, '/');
+        return self::normalizeKnownStoragePath($value) ?? ltrim($value, '/');
     }
 
     public static function isExternalUrl(?string $value): bool
@@ -44,6 +52,12 @@ class PublicStoragePath
         return self::normalize($normalized) === $normalized;
     }
 
+    private static function normalizeKnownStoragePath(string $value): ?string
+    {
+        return self::normalizePublicStoragePrefix($value)
+            ?? self::normalizeDirectoryPath($value);
+    }
+
     private static function normalizePublicStoragePrefix(string $value): ?string
     {
         $path = trim(str_replace('\\', '/', $value));
@@ -51,6 +65,19 @@ class PublicStoragePath
         foreach (['/public/storage/', 'public/storage/', '/storage/', 'storage/'] as $prefix) {
             if (Str::startsWith($path, $prefix)) {
                 return ltrim(Str::after($path, $prefix), '/');
+            }
+        }
+
+        return null;
+    }
+
+    private static function normalizeDirectoryPath(string $value): ?string
+    {
+        $path = ltrim(trim(str_replace('\\', '/', $value)), '/');
+
+        foreach (self::STORAGE_DIRECTORIES as $directory) {
+            if (Str::startsWith($path, $directory . '/')) {
+                return $path;
             }
         }
 
