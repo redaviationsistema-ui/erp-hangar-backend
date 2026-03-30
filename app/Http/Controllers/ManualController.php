@@ -70,7 +70,7 @@ class ManualController extends Controller
 
         $processed = null;
 
-        if (($data['auto_process'] ?? false) === true) {
+        if (($data['auto_process'] ?? true) === true) {
             $processed = app(ManualProcessingService::class)->process($manual, [
                 'replace_chunks' => true,
                 'raw_text' => $data['raw_text'] ?? null,

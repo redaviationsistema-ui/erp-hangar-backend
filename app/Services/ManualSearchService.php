@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\AtaChapter;
+use App\Models\Manual;
 use App\Models\ManualChunk;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ManualSearchService
 {
@@ -23,7 +25,35 @@ class ManualSearchService
             ->pluck('id')
             ->all();
 
-        $chunks = $this->baseQuery($filters, $ataIds)
+        $chunks = $this->performSearch($filters, $keywords, $ataIds, $limit);
+        $autoProcessed = [];
+
+        if ($chunks->isEmpty()) {
+            $autoProcessed = $this->ensureChunksAvailable($filters);
+
+            if (! empty($autoProcessed)) {
+                $chunks = $this->performSearch($filters, $keywords, $ataIds, $limit);
+            }
+        }
+
+        if ($chunks->isEmpty() && ! empty($filters['aeronave_modelo'])) {
+            $relaxedFilters = $filters;
+            unset($relaxedFilters['aeronave_modelo']);
+
+            $chunks = $this->performSearch($relaxedFilters, $keywords, $ataIds, $limit);
+        }
+
+        return [
+            'keywords' => $keywords,
+            'ata_candidates' => $ataCodes,
+            'auto_processed_manual_ids' => $autoProcessed,
+            'chunks' => $chunks->map(fn (array $item) => $this->serializeChunk($item['chunk'], $item['score']))->all(),
+        ];
+    }
+
+    private function performSearch(array $filters, array $keywords, array $ataIds, int $limit)
+    {
+        return $this->baseQuery($filters, $ataIds)
             ->with([
                 'manual:id,aeronave_id,nombre,tipo_manual,aeronave_modelo,revision,estado',
                 'ataChapter:id,codigo,descripcion',
@@ -39,12 +69,6 @@ class ManualSearchService
             ->sortByDesc('score')
             ->take($limit)
             ->values();
-
-        return [
-            'keywords' => $keywords,
-            'ata_candidates' => $ataCodes,
-            'chunks' => $chunks->map(fn (array $item) => $this->serializeChunk($item['chunk'], $item['score']))->all(),
-        ];
     }
 
     public function contextualizeDiscrepancy(string $descripcion, array $filters = [], int $limit = 5): array
@@ -82,7 +106,16 @@ class ManualSearchService
                 $manualQuery
                     ->when(! empty($filters['manual_id']), fn ($q) => $q->where('id', $filters['manual_id']))
                     ->when(! empty($filters['aeronave_id']), fn ($q) => $q->where('aeronave_id', $filters['aeronave_id']))
-                    ->when(! empty($filters['aeronave_modelo']), fn ($q) => $q->where('aeronave_modelo', $filters['aeronave_modelo']))
+                    ->when(! empty($filters['aeronave_modelo']), function ($q) use ($filters) {
+                        $modelo = trim((string) $filters['aeronave_modelo']);
+
+                        $q->where(function ($manual) use ($modelo) {
+                            $manual
+                                ->where('aeronave_modelo', $modelo)
+                                ->orWhere('aeronave_modelo', 'like', $modelo . '%')
+                                ->orWhere('aeronave_modelo', 'like', '%' . $modelo . '%');
+                        });
+                    })
                     ->when(! empty($filters['revision']), fn ($q) => $q->where('revision', $filters['revision']))
                     ->when(! empty($filters['tipo_manual']), fn ($q) => $q->where('tipo_manual', $filters['tipo_manual']))
                     ->when(! empty($filters['estado']), fn ($q) => $q->where('estado', $filters['estado']), fn ($q) => $q->where('estado', 'vigente'));
@@ -93,6 +126,52 @@ class ManualSearchService
                 empty($filters['ata_chapter_id']) && empty($filters['ata_subchapter_id']) && ! empty($ataHints),
                 fn ($q) => $q->whereIn('ata_chapter_id', $ataHints)
             );
+    }
+
+    private function ensureChunksAvailable(array $filters): array
+    {
+        $candidates = Manual::query()
+            ->select(['id', 'aeronave_id', 'nombre', 'tipo_manual', 'aeronave_modelo', 'revision', 'estado', 'archivo_path'])
+            ->withCount('chunks')
+            ->when(! empty($filters['manual_id']), fn ($q) => $q->where('id', $filters['manual_id']))
+            ->when(! empty($filters['aeronave_id']), fn ($q) => $q->where('aeronave_id', $filters['aeronave_id']))
+            ->when(! empty($filters['aeronave_modelo']), function ($q) use ($filters) {
+                $modelo = trim((string) $filters['aeronave_modelo']);
+
+                $q->where(function ($manual) use ($modelo) {
+                    $manual
+                        ->where('aeronave_modelo', $modelo)
+                        ->orWhere('aeronave_modelo', 'like', $modelo . '%')
+                        ->orWhere('aeronave_modelo', 'like', '%' . $modelo . '%')
+                        ->orWhereNull('aeronave_modelo');
+                });
+            })
+            ->when(! empty($filters['revision']), fn ($q) => $q->where('revision', $filters['revision']))
+            ->when(! empty($filters['estado']), fn ($q) => $q->where('estado', $filters['estado']), fn ($q) => $q->where('estado', 'vigente'))
+            ->whereNotNull('archivo_path')
+            ->orderByDesc('chunks_count')
+            ->orderBy('id')
+            ->limit(3)
+            ->get();
+
+        $processed = [];
+
+        foreach ($candidates as $manual) {
+            if ($manual->chunks_count > 0) {
+                continue;
+            }
+
+            try {
+                app(ManualProcessingService::class)->process($manual, [
+                    'replace_chunks' => true,
+                ]);
+                $processed[] = $manual->id;
+            } catch (Throwable) {
+                // Keep search resilient even if a source PDF cannot be processed.
+            }
+        }
+
+        return $processed;
     }
 
     private function scoreChunk(ManualChunk $chunk, array $keywords, array $ataHints): int
