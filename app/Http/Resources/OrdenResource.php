@@ -91,7 +91,10 @@ class OrdenResource extends JsonResource
             ] : null),
             'tareas' => $this->whenLoaded('tareas'),
             'tareas_count' => $this->whenCounted('tareas'),
-            'discrepancias' => $this->whenLoaded('discrepancias'),
+            'discrepancias' => $this->whenLoaded(
+                'discrepancias',
+                fn () => DiscrepanciaResource::collection($this->discrepancias)->resolve($request)
+            ),
             'discrepancias_count' => $this->whenCounted('discrepancias'),
             'refacciones' => $this->whenLoaded('refacciones'),
             'refacciones_count' => $this->whenCounted('refacciones'),
