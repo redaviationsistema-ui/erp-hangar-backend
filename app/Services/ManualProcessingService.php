@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Symfony\Component\Process\Process;
 
 class ManualProcessingService
 {
@@ -99,7 +100,40 @@ class ManualProcessingService
             }
         }
 
-        throw new RuntimeException('No hay texto extraido para este PDF. Agrega un archivo .txt o .json con el mismo nombre base del PDF, o envia raw_text al procesar.');
+        return $this->loadFromPdf($path);
+    }
+
+    private function loadFromPdf(string $path): array
+    {
+        $scriptPath = base_path('scripts/extract_pdf_pages.py');
+
+        if (! File::exists($scriptPath)) {
+            throw new RuntimeException('No existe el script de extraccion PDF.');
+        }
+
+        $process = new Process(['python', $scriptPath, $path], base_path());
+        $process->setTimeout(600);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new RuntimeException('No se pudo extraer texto del PDF: ' . trim($process->getErrorOutput() ?: $process->getOutput()));
+        }
+
+        $payload = json_decode($process->getOutput(), true);
+
+        if (! is_array($payload) || ! isset($payload['pages']) || ! is_array($payload['pages'])) {
+            throw new RuntimeException('La extraccion del PDF devolvio un formato invalido.');
+        }
+
+        return [
+            'source' => $payload['source'] ?? basename($path),
+            'pages' => collect($payload['pages'])
+                ->map(fn ($page, $index) => [
+                    'page' => (int) ($page['page'] ?? ($index + 1)),
+                    'text' => (string) ($page['text'] ?? ''),
+                ])
+                ->all(),
+        ];
     }
 
     private function loadFromJsonSidecar(string $path): array
@@ -158,7 +192,7 @@ class ManualProcessingService
                 }
 
                 $sectionMatch = [];
-                if (preg_match('/^(?<code>\d{2}(?:-\d{2}){1,3})(?:\s+|-|\.)?(?<title>.+)?$/', $trimmed, $sectionMatch) === 1) {
+                if (preg_match('/^(?<code>\d{2,3}(?:-\d{2}){1,3})(?:\s+|-|\.)?(?<title>.+)?$/', $trimmed, $sectionMatch) === 1) {
                     if ($current) {
                         $sections[] = $current;
                     }
@@ -505,3 +539,4 @@ class ManualProcessingService
             ->all();
     }
 }
+
