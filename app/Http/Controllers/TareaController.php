@@ -42,6 +42,7 @@ class TareaController extends Controller
 
             if ($request->filled('per_page')) {
                 $tareas = $query->paginate(max(1, min($request->integer('per_page', 25), 100)));
+                $this->exposePublicFileUrl($tareas->getCollection(), 'foto_path', 'foto_url');
 
                 return [
                     'success' => true,
@@ -55,7 +56,10 @@ class TareaController extends Controller
                 ];
             }
 
-            return ['success' => true, 'data' => $query->get()];
+            $items = $query->get();
+            $this->exposePublicFileUrl($items, 'foto_path', 'foto_url');
+
+            return ['success' => true, 'data' => $items];
         });
 
         return response()->json($payload);
@@ -93,19 +97,24 @@ class TareaController extends Controller
 
         $this->bustCache();
 
+        $tarea = Tarea::create(SchemaPayload::forModel(new Tarea(), $data))->load(['orden', 'area', 'plantillaAta']);
+        $this->exposePublicFileUrl($tarea, 'foto_path', 'foto_url');
+
         return response()->json([
             'success' => true,
-            'data' => Tarea::create(SchemaPayload::forModel(new Tarea(), $data))->load(['orden', 'area', 'plantillaAta']),
+            'data' => $tarea,
         ], 201);
     }
 
     public function show(Tarea $tarea)
     {
         $this->authorizeModelArea(request(), $tarea);
+        $tarea->load(['orden', 'area', 'plantillaAta']);
+        $this->exposePublicFileUrl($tarea, 'foto_path', 'foto_url');
 
         return response()->json([
             'success' => true,
-            'data' => $tarea->load(['orden', 'area', 'plantillaAta']),
+            'data' => $tarea,
         ]);
     }
 
@@ -142,8 +151,10 @@ class TareaController extends Controller
         $this->replaceStoredImage($tarea->foto_path, $data['foto_path'] ?? null);
         $tarea->update(SchemaPayload::forModel($tarea, $data));
         $this->bustCache();
+        $tarea->load(['orden', 'area', 'plantillaAta']);
+        $this->exposePublicFileUrl($tarea, 'foto_path', 'foto_url');
 
-        return response()->json(['success' => true, 'data' => $tarea->load(['orden', 'area', 'plantillaAta'])]);
+        return response()->json(['success' => true, 'data' => $tarea]);
     }
 
     public function destroy(Tarea $tarea)

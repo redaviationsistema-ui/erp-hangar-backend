@@ -12,7 +12,7 @@ class DiscrepanciaResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $imageUrl = $this->resolveImageUrl($this->imagen_path);
+        $image = $this->resolveImage($this->imagen_path);
 
         return [
             'id' => $this->id,
@@ -25,9 +25,12 @@ class DiscrepanciaResource extends JsonResource
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),
             'horas_hombre' => $this->horas_hombre,
-            'imagen_archivo' => PublicStoragePath::normalize($this->imagen_path),
-            'imagen_path' => $imageUrl,
-            'foto' => $imageUrl,
+            'imagen_archivo' => $image['archivo'],
+            'imagen_path' => $image['url'],
+            'imagen_url' => $image['url'],
+            'foto' => $image['url'],
+            'foto_url' => $image['url'],
+            'evidencia_url' => $image['url'],
             'componente_numero_parte_off' => $this->componente_numero_parte_off,
             'componente_numero_serie_off' => $this->componente_numero_serie_off,
             'componente_numero_parte_on' => $this->componente_numero_parte_on,
@@ -47,22 +50,34 @@ class DiscrepanciaResource extends JsonResource
         ];
     }
 
-    private function resolveImageUrl(?string $path): ?string
+    private function resolveImage(?string $path): array
     {
         $normalizedPath = PublicStoragePath::normalize($path);
 
         if ($normalizedPath === null) {
-            return null;
+            return [
+                'archivo' => null,
+                'url' => null,
+            ];
         }
 
         if (PublicStoragePath::isExternalUrl($normalizedPath) || Str::startsWith($normalizedPath, ['http://', 'https://'])) {
-            return $normalizedPath;
+            return [
+                'archivo' => $normalizedPath,
+                'url' => $normalizedPath,
+            ];
         }
 
         if (! Storage::disk('public')->exists($normalizedPath)) {
-            return null;
+            return [
+                'archivo' => null,
+                'url' => null,
+            ];
         }
 
-        return Storage::disk('public')->url($normalizedPath);
+        return [
+            'archivo' => $normalizedPath,
+            'url' => Storage::disk('public')->url($normalizedPath),
+        ];
     }
 }
