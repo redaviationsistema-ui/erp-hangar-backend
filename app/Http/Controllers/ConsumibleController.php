@@ -63,6 +63,7 @@ class ConsumibleController extends Controller
             'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
             'item' => 'sometimes|nullable|string|max:20',
             'solicitante_fecha' => 'sometimes|nullable|date',
+            'solicitante_nombre' => 'sometimes|nullable|string|max:255',
             'nombre' => 'sometimes|nullable|string|max:255',
             'descripcion' => ($partial ? 'sometimes' : 'required') . '|string',
             'cantidad' => 'sometimes|nullable|integer|min:1',
@@ -71,6 +72,7 @@ class ConsumibleController extends Controller
             'certificado_conformidad' => 'sometimes|nullable|string|max:255',
             'area_procedencia' => 'sometimes|nullable|string|max:255',
             'recibe_fecha' => 'sometimes|nullable|date',
+            'recibe_nombre' => 'sometimes|nullable|string|max:255',
             'costo_total' => 'sometimes|nullable|numeric',
             'precio_venta' => 'sometimes|nullable|numeric',
         ]);

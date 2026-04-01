@@ -99,6 +99,7 @@ class StoreOrdenRequest extends FormRequest
         return [
             $prefix . '.*.item' => 'nullable|string|max:20',
             $prefix . '.*.solicitante_fecha' => 'nullable|date',
+            $prefix . '.*.solicitante_nombre' => 'nullable|string|max:255',
             $prefix . '.*.nombre' => 'nullable|string|max:255',
             $prefix . '.*.descripcion' => 'required_with:' . $prefix . '|string',
             $prefix . '.*.cantidad' => 'nullable|integer|min:1',
@@ -107,6 +108,7 @@ class StoreOrdenRequest extends FormRequest
             $prefix . '.*.certificado_conformidad' => 'nullable|string|max:255',
             $prefix . '.*.area_procedencia' => 'nullable|string|max:255',
             $prefix . '.*.recibe_fecha' => 'nullable|date',
+            $prefix . '.*.recibe_nombre' => 'nullable|string|max:255',
             $prefix . '.*.costo_total' => 'nullable|numeric',
             $prefix . '.*.precio_venta' => 'nullable|numeric',
         ];

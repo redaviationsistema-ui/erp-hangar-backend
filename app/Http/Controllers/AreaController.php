@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Area;
+use App\Support\AreaOtFormSchema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -24,7 +25,12 @@ class AreaController extends Controller
 
             return [
                 'success' => true,
-                'data' => $query->get(),
+                'data' => $query->get()->map(function (Area $area) {
+                    $payload = $area->toArray();
+                    $payload['ot_form'] = AreaOtFormSchema::for($area);
+
+                    return $payload;
+                })->values(),
             ];
         });
 
@@ -55,7 +61,7 @@ class AreaController extends Controller
         $payload = Cache::remember($this->cacheKey('show', ['id' => $area->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($area) {
             return [
                 'success' => true,
-                'data' => $area->load([
+                'data' => tap($area->load([
                     'ordenes' => fn ($query) => $query
                         ->select([
                             'id',
@@ -77,7 +83,9 @@ class AreaController extends Controller
                         ])
                         ->latest('fecha')
                         ->latest('id'),
-                ])->loadCount('ordenes'),
+                ])->loadCount('ordenes'), function (Area $area) {
+                    $area->setAttribute('ot_form', AreaOtFormSchema::for($area));
+                }),
             ];
         });
 

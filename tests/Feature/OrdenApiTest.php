@@ -187,7 +187,31 @@ class OrdenApiTest extends TestCase
         $areasResponse
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(13, 'data');
+            ->assertJsonCount(13, 'data')
+            ->assertJsonPath('data.0.ot_form.tabs.0.key', 'partes')
+            ->assertJsonPath('data.0.ot_form.tabs.0.collection', 'refacciones')
+            ->assertJsonPath('data.0.ot_form.tabs.1.key', 'materiales')
+            ->assertJsonPath('data.0.ot_form.tabs.1.collection', 'consumibles');
+    }
+
+    public function test_it_returns_ot_form_schema_per_area(): void
+    {
+        $this->seed();
+
+        $area = Area::where('codigo', 'AVCS')->firstOrFail();
+
+        $response = $this->getJson('/api/v1/areas/' . $area->id);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.codigo', 'AVCS')
+            ->assertJsonPath('data.ot_form.tabs.0.key', 'partes')
+            ->assertJsonPath('data.ot_form.tabs.0.collection', 'refacciones')
+            ->assertJsonPath('data.ot_form.tabs.0.presets.0.nombre', 'Arnes electrico')
+            ->assertJsonPath('data.ot_form.tabs.1.key', 'materiales')
+            ->assertJsonPath('data.ot_form.tabs.1.collection', 'consumibles')
+            ->assertJsonPath('data.ot_form.tabs.1.presets.0.nombre', 'Termofit');
     }
 
     public function test_it_supports_full_crud_for_aeronaves(): void

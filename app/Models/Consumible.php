@@ -10,6 +10,7 @@ class Consumible extends Model
         'orden_id',
         'item',
         'solicitante_fecha',
+        'solicitante_nombre',
         'nombre',
         'descripcion',
         'cantidad',
@@ -18,6 +19,7 @@ class Consumible extends Model
         'certificado_conformidad',
         'area_procedencia',
         'recibe_fecha',
+        'recibe_nombre',
         'costo_total',
         'precio_venta',
     ];

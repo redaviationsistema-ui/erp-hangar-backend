@@ -33,12 +33,17 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('motores', MotorController::class)->parameters([
             'motores' => 'motor',
         ]);
-        Route::apiResource('manuales', ManualController::class)->parameters([
-            'manuales' => 'manuale',
-        ]);
         Route::get('/manuales/source-files', [ManualController::class, 'sourceFiles']);
         Route::post('/manuales/import-source', [ManualController::class, 'importFromSource']);
-        Route::post('/manuales/{manuale}/process-source', [ManualController::class, 'processSource']);
+        Route::post('/manuales/{manuale}/process-source', [ManualController::class, 'processSource'])
+            ->whereNumber('manuale');
+        Route::apiResource('manuales', ManualController::class)
+            ->parameters([
+                'manuales' => 'manuale',
+            ])
+            ->where([
+                'manuale' => '[0-9]+',
+            ]);
         Route::get('/manuales-busqueda', [ManualSearchController::class, 'search']);
         Route::get('/discrepancias/{discrepancia}/contexto-manual', [ManualSearchController::class, 'discrepancy']);
         Route::get('/ata', [AtaController::class, 'index']);
