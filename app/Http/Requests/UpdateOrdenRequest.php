@@ -19,4 +19,12 @@ class UpdateOrdenRequest extends StoreOrdenRequest
 
         return $rules;
     }
+
+    protected function isClosingState(mixed $state): bool
+    {
+        $current = strtolower(trim((string) ($this->currentOrder()?->estado ?? '')));
+        $next = strtolower(trim((string) ($state ?? $this->currentOrder()?->estado ?? '')));
+
+        return $next === 'cerrada' && $current !== 'cerrada';
+    }
 }

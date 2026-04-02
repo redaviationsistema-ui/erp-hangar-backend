@@ -6,6 +6,7 @@ use App\Http\Requests\StoreOrdenRequest;
 use App\Http\Requests\UpdateOrdenRequest;
 use App\Http\Resources\OrdenResource;
 use App\Models\Area;
+use App\Models\AuditLog;
 use App\Models\AtaSubchapter;
 use App\Models\Motor;
 use App\Models\Orden;
@@ -225,6 +226,35 @@ class OrdenController extends Controller
                 'data' => (new OrdenResource($ordene->load($this->detailRelations())))->resolve(),
             ];
         });
+
+        return response()->json($payload);
+    }
+
+    public function showTraceability(Orden $ordene)
+    {
+        $this->authorizeModelArea(request(), $ordene);
+
+        $payload = Cache::remember(
+            $this->cacheKey('trazabilidad', ['id' => $ordene->id] + $this->areaCacheContext(request())),
+            now()->addMinutes(5),
+            function () use ($ordene) {
+                $ordene->load($this->detailRelations())->loadCount($this->countRelations());
+
+                return [
+                    'success' => true,
+                    'message' => 'Trazabilidad obtenida correctamente.',
+                    'data' => [
+                        'orden' => $this->traceabilityOrderSummary($ordene),
+                        'vinculos' => $this->traceabilityLinks($ordene),
+                        'historial_componente' => $this->componentHistory($ordene),
+                        'evidencias' => $this->evidenceTimeline($ordene),
+                        'documentos_oficiales' => $this->officialDocuments($ordene),
+                        'materiales' => $this->materialTraceability($ordene),
+                        'auditoria' => $this->auditTrail($ordene),
+                    ],
+                ];
+            }
+        );
 
         return response()->json($payload);
     }
@@ -597,6 +627,312 @@ class OrdenController extends Controller
     private function dateToString(mixed $value): ?string
     {
         return method_exists($value, 'toDateString') ? $value->toDateString() : null;
+    }
+
+    private function traceabilityOrderSummary(Orden $orden): array
+    {
+        return [
+            'id' => $orden->id,
+            'folio' => $orden->folio,
+            'estado' => $orden->estado,
+            'fecha' => $this->dateToString($orden->fecha),
+            'fecha_inicio' => $this->dateToString($orden->fecha_inicio),
+            'fecha_termino' => $this->dateToString($orden->fecha_termino),
+            'descripcion' => $orden->descripcion,
+            'trabajo_descripcion' => $orden->trabajo_descripcion,
+            'accion_correctiva' => $orden->accion_correctiva,
+            'tecnico_responsable' => $orden->tecnico_responsable,
+            'inspector' => $orden->inspector,
+            'cliente' => $orden->cliente,
+            'matricula' => $orden->matricula,
+            'aeronave_modelo' => $orden->aeronave_modelo,
+            'aeronave_serie' => $orden->aeronave_serie,
+            'componente_descripcion' => $orden->componente_descripcion,
+            'componente_modelo' => $orden->componente_modelo,
+            'componente_numero_parte' => $orden->componente_numero_parte,
+            'componente_numero_serie' => $orden->componente_numero_serie,
+            'tareas_count' => $orden->tareas_count,
+            'discrepancias_count' => $orden->discrepancias_count,
+            'refacciones_count' => $orden->refacciones_count,
+            'consumibles_count' => $orden->consumibles_count,
+            'herramientas_count' => $orden->herramientas_count,
+            'ndt_count' => $orden->ndt_count,
+            'talleres_externos_count' => $orden->talleres_externos_count,
+            'mediciones_count' => $orden->mediciones_count,
+        ];
+    }
+
+    private function traceabilityLinks(Orden $orden): array
+    {
+        return [
+            'area' => $orden->area ? [
+                'id' => $orden->area->id,
+                'codigo' => $orden->area->codigo,
+                'nombre' => $orden->area->nombre,
+            ] : null,
+            'usuario' => $orden->usuario ? [
+                'id' => $orden->usuario->id,
+                'nombre' => $orden->usuario->name,
+                'email' => $orden->usuario->email,
+            ] : null,
+            'motor' => $orden->motor ? [
+                'id' => $orden->motor->id,
+                'posicion' => $orden->motor->posicion,
+                'fabricante' => $orden->motor->fabricante,
+                'modelo' => $orden->motor->modelo,
+                'numero_parte' => $orden->motor->numero_parte,
+                'numero_serie' => $orden->motor->numero_serie,
+                'estado' => $orden->motor->estado,
+            ] : null,
+            'aeronave' => $orden->motor?->aeronave ? [
+                'id' => $orden->motor->aeronave->id,
+                'cliente' => $orden->motor->aeronave->cliente,
+                'matricula' => $orden->motor->aeronave->matricula,
+                'fabricante' => $orden->motor->aeronave->fabricante,
+                'modelo' => $orden->motor->aeronave->modelo,
+                'numero_serie' => $orden->motor->aeronave->numero_serie,
+                'estado' => $orden->motor->aeronave->estado,
+            ] : null,
+        ];
+    }
+
+    private function componentHistory(Orden $orden): array
+    {
+        $query = Orden::query()
+            ->with(['area:id,codigo,nombre', 'usuario:id,name,email'])
+            ->whereKeyNot($orden->id)
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->limit(12);
+
+        if ($orden->motor_id) {
+            $query->where('motor_id', $orden->motor_id);
+        } elseif ($orden->componente_numero_serie || $orden->componente_numero_parte) {
+            $query->where(function ($nested) use ($orden) {
+                if ($orden->componente_numero_serie) {
+                    $nested->orWhere('componente_numero_serie', $orden->componente_numero_serie);
+                }
+                if ($orden->componente_numero_parte) {
+                    $nested->orWhere('componente_numero_parte', $orden->componente_numero_parte);
+                }
+            });
+        } elseif ($orden->matricula) {
+            $query->where('matricula', $orden->matricula);
+        } else {
+            return [];
+        }
+
+        return $query->get()->map(function (Orden $item) {
+            return [
+                'id' => $item->id,
+                'folio' => $item->folio,
+                'estado' => $item->estado,
+                'fecha' => $this->dateToString($item->fecha),
+                'descripcion' => $item->descripcion,
+                'area' => $item->area ? $item->area->nombre : null,
+                'usuario' => $item->usuario ? $item->usuario->name : null,
+                'componente_numero_parte' => $item->componente_numero_parte,
+                'componente_numero_serie' => $item->componente_numero_serie,
+            ];
+        })->values()->all();
+    }
+
+    private function evidenceTimeline(Orden $orden): array
+    {
+        $entries = [];
+
+        foreach ($orden->tareas as $item) {
+            $url = $this->publicFileUrl($item->foto_path);
+            if ($url) {
+                $entries[] = [
+                    'tipo' => 'tarea',
+                    'titulo' => $item->titulo ?: 'Tarea sin titulo',
+                    'detalle' => $item->descripcion,
+                    'url' => $url,
+                    'fecha' => optional($item->updated_at)->toIso8601String(),
+                ];
+            }
+        }
+
+        foreach ($orden->discrepancias as $item) {
+            $url = $this->publicFileUrl($item->imagen_path);
+            if ($url) {
+                $entries[] = [
+                    'tipo' => 'discrepancia',
+                    'titulo' => $item->item ?: 'Discrepancia',
+                    'detalle' => $item->descripcion,
+                    'url' => $url,
+                    'fecha' => optional($item->updated_at)->toIso8601String(),
+                ];
+            }
+        }
+
+        foreach ($orden->ndt as $item) {
+            $url = $this->publicFileUrl($item->evidencia_path);
+            if ($url) {
+                $entries[] = [
+                    'tipo' => 'ndt',
+                    'titulo' => $item->tipo_prueba ?: 'NDT',
+                    'detalle' => $item->resultado,
+                    'url' => $url,
+                    'fecha' => optional($item->updated_at)->toIso8601String(),
+                ];
+            }
+        }
+
+        foreach ($orden->talleresExternos as $item) {
+            $url = $this->publicFileUrl($item->foto_path);
+            if ($url) {
+                $entries[] = [
+                    'tipo' => 'taller_externo',
+                    'titulo' => $item->proveedor ?: 'Taller externo',
+                    'detalle' => $item->trabajo_realizado ?: $item->observaciones,
+                    'url' => $url,
+                    'fecha' => optional($item->updated_at)->toIso8601String(),
+                ];
+            }
+        }
+
+        foreach ($orden->mediciones as $item) {
+            $url = $this->publicFileUrl($item->imagen_path);
+            if ($url) {
+                $entries[] = [
+                    'tipo' => 'medicion',
+                    'titulo' => $item->parametro ?: 'Medicion',
+                    'detalle' => $item->descripcion,
+                    'url' => $url,
+                    'fecha' => optional($item->updated_at)->toIso8601String(),
+                ];
+            }
+        }
+
+        usort($entries, fn (array $a, array $b) => strcmp((string) ($b['fecha'] ?? ''), (string) ($a['fecha'] ?? '')));
+
+        return $entries;
+    }
+
+    private function officialDocuments(Orden $orden): array
+    {
+        $documents = [];
+
+        foreach ($orden->refacciones as $item) {
+            $url = $this->publicFileUrl($item->certificado_conformidad_imagen);
+            if (($item->certificado_conformidad ?? null) || $url) {
+                $documents[] = [
+                    'tipo' => 'refaccion',
+                    'titulo' => $item->certificado_conformidad ?: 'Certificado de conformidad',
+                    'referencia' => $item->numero_parte ?: $item->descripcion,
+                    'url' => $url,
+                ];
+            }
+        }
+
+        foreach ($orden->ndt as $item) {
+            if (($item->certificado ?? null) || ($item->seccion_manual ?? null)) {
+                $documents[] = [
+                    'tipo' => 'ndt',
+                    'titulo' => $item->certificado ?: 'Certificado NDT',
+                    'referencia' => $item->seccion_manual ?: $item->tipo_prueba,
+                    'url' => $this->publicFileUrl($item->evidencia_path),
+                ];
+            }
+        }
+
+        foreach ($orden->talleresExternos as $item) {
+            if (($item->certificado ?? null) || ($item->proveedor ?? null)) {
+                $documents[] = [
+                    'tipo' => 'taller_externo',
+                    'titulo' => $item->certificado ?: 'Certificado de taller externo',
+                    'referencia' => $item->proveedor ?: $item->trabajo_realizado,
+                    'url' => $this->publicFileUrl($item->foto_path),
+                ];
+            }
+        }
+
+        foreach ($orden->mediciones as $item) {
+            if (($item->manual_od ?? null) || ($item->manual_id ?? null)) {
+                $documents[] = [
+                    'tipo' => 'medicion',
+                    'titulo' => 'Referencia de medicion',
+                    'referencia' => trim(implode(' | ', array_filter([
+                        $item->manual_od ? 'Manual OD ' . $item->manual_od : null,
+                        $item->manual_id ? 'Manual ID ' . $item->manual_id : null,
+                    ]))),
+                    'url' => $this->publicFileUrl($item->imagen_path),
+                ];
+            }
+        }
+
+        return $documents;
+    }
+
+    private function materialTraceability(Orden $orden): array
+    {
+        return [
+            'refacciones' => $orden->refacciones->map(function ($item) {
+                return [
+                    'descripcion' => $item->descripcion,
+                    'nombre' => $item->nombre,
+                    'numero_parte' => $item->numero_parte,
+                    'cantidad' => $item->cantidad,
+                    'certificado' => $item->certificado_conformidad,
+                    'certificado_url' => $this->publicFileUrl($item->certificado_conformidad_imagen),
+                    'status' => $item->status,
+                ];
+            })->values()->all(),
+            'consumibles' => $orden->consumibles->map(function ($item) {
+                return [
+                    'descripcion' => $item->descripcion,
+                    'nombre' => $item->nombre,
+                    'numero_parte' => $item->numero_parte,
+                    'cantidad' => $item->cantidad,
+                    'certificado' => $item->certificado_conformidad,
+                    'status' => $item->status,
+                ];
+            })->values()->all(),
+            'herramientas' => $orden->herramientas->map(function ($item) {
+                return [
+                    'descripcion' => $item->descripcion,
+                    'nombre' => $item->nombre,
+                    'numero_parte' => $item->numero_parte,
+                    'cantidad' => $item->cantidad,
+                    'certificado' => $item->certificado_conformidad,
+                    'status' => $item->status,
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    private function auditTrail(Orden $orden): array
+    {
+        return AuditLog::query()
+            ->with('user:id,name,email')
+            ->where(function ($query) use ($orden) {
+                $query->where('order_id', $orden->id)
+                    ->orWhere(function ($nested) use ($orden) {
+                        $nested->where('entity_type', 'orden')
+                            ->where('entity_id', $orden->id);
+                    });
+            })
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->map(function (AuditLog $log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'description' => $log->description,
+                    'entity_type' => $log->entity_type,
+                    'entity_label' => $log->entity_label,
+                    'occurred_at' => optional($log->occurred_at)->toIso8601String(),
+                    'user' => $log->user ? [
+                        'id' => $log->user->id,
+                        'name' => $log->user->name,
+                        'email' => $log->user->email,
+                    ] : null,
+                ];
+            })->values()->all();
     }
 
     private function mergeMotorContext(array &$data): void

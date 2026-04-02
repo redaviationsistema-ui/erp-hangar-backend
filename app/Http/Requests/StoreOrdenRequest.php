@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Orden;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreOrdenRequest extends FormRequest
 {
@@ -92,6 +94,195 @@ class StoreOrdenRequest extends FormRequest
             'talleres_externos' => 'nullable|array',
             'mediciones' => 'nullable|array',
         ] + $this->catalogItemRules('refacciones') + $this->catalogItemRules('consumibles') + $this->catalogItemRules('herramientas') + $this->ndtRules() + $this->tallerRules() + $this->medicionRules();
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $data = $validator->safe()->toArray();
+
+            if (! $this->isClosingState($data['estado'] ?? null)) {
+                return;
+            }
+
+            foreach ($this->closingValidationMessages($data) as $message) {
+                $validator->errors()->add('estado', $message);
+            }
+        });
+    }
+
+    protected function closingValidationMessages(array $data): array
+    {
+        $snapshot = $this->buildClosingSnapshot($data);
+        $messages = [];
+
+        if (! $snapshot['has_responsible']) {
+            $messages[] = 'No se puede cerrar la OT sin responsable tecnico o usuario asignado.';
+        }
+
+        if (! $snapshot['has_evidence']) {
+            $messages[] = 'No se puede cerrar la OT sin evidencia tecnica registrada.';
+        }
+
+        if (! $snapshot['has_materials']) {
+            $messages[] = 'No se puede cerrar la OT sin materiales o registros tecnicos relacionados.';
+        }
+
+        if ($snapshot['has_open_discrepancies']) {
+            $messages[] = 'No se puede cerrar la OT mientras existan discrepancias sin resolver.';
+        }
+
+        return $messages;
+    }
+
+    protected function buildClosingSnapshot(array $data): array
+    {
+        $order = $this->currentOrder();
+        $order?->loadMissing([
+            'tareas',
+            'discrepancias',
+            'refacciones',
+            'consumibles',
+            'herramientas',
+            'ndt',
+            'talleresExternos',
+            'mediciones',
+        ]);
+
+        $responsible = trim((string) ($data['tecnico_responsable'] ?? $order?->tecnico_responsable ?? ''));
+        $hasAssignedUser = ! empty($data['user_id']) || ! empty($order?->user_id);
+
+        $tareas = $this->relationItems($data, 'tareas', $order?->tareas?->all() ?? []);
+        $discrepancias = $this->relationItems($data, 'discrepancias', $order?->discrepancias?->all() ?? []);
+        $refacciones = $this->relationItems($data, 'refacciones', $order?->refacciones?->all() ?? []);
+        $consumibles = $this->relationItems($data, 'consumibles', $order?->consumibles?->all() ?? []);
+        $herramientas = $this->relationItems($data, 'herramientas', $order?->herramientas?->all() ?? []);
+        $ndt = $this->relationItems($data, 'ndt', $order?->ndt?->all() ?? []);
+        $talleres = $this->relationItems($data, 'talleres_externos', $order?->talleresExternos?->all() ?? []);
+        $mediciones = $this->relationItems($data, 'mediciones', $order?->mediciones?->all() ?? []);
+
+        return [
+            'has_responsible' => $responsible !== '' || $hasAssignedUser,
+            'has_evidence' => $this->hasEvidence([
+                ...$tareas,
+                ...$discrepancias,
+                ...$ndt,
+                ...$talleres,
+                ...$mediciones,
+            ]),
+            'has_materials' => $this->hasMaterials([
+                ...$refacciones,
+                ...$consumibles,
+                ...$herramientas,
+                ...$ndt,
+                ...$talleres,
+                ...$mediciones,
+            ]),
+            'has_open_discrepancies' => $this->hasOpenDiscrepancies($discrepancias),
+        ];
+    }
+
+    protected function currentOrder(): ?Orden
+    {
+        $order = $this->route('ordene');
+
+        return $order instanceof Orden ? $order : null;
+    }
+
+    protected function relationItems(array $data, string $key, array $fallback): array
+    {
+        $source = array_key_exists($key, $data) ? ($data[$key] ?? []) : $fallback;
+
+        return collect($source)
+            ->map(function ($item) {
+                if (is_array($item)) {
+                    return $item;
+                }
+
+                if (is_object($item) && method_exists($item, 'toArray')) {
+                    return $item->toArray();
+                }
+
+                return [];
+            })
+            ->filter(fn (array $item) => ! empty($item))
+            ->values()
+            ->all();
+    }
+
+    protected function hasEvidence(array $items): bool
+    {
+        $keys = [
+            'imagen_path',
+            'foto_path',
+            'evidencia_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_url',
+            'imagen_url',
+            'evidencia_url',
+        ];
+
+        foreach ($items as $item) {
+            foreach ($keys as $key) {
+                if (trim((string) ($item[$key] ?? '')) !== '') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    protected function hasMaterials(array $items): bool
+    {
+        foreach ($items as $item) {
+            $descriptor = trim((string) ($item['descripcion'] ?? $item['nombre'] ?? $item['tipo_prueba'] ?? $item['proveedor'] ?? $item['parametro'] ?? ''));
+            $partNumber = trim((string) ($item['numero_parte'] ?? ''));
+            $quantity = $item['cantidad'] ?? null;
+
+            if ($descriptor !== '' || $partNumber !== '' || (is_numeric($quantity) && (int) $quantity > 0)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function hasOpenDiscrepancies(array $items): bool
+    {
+        foreach ($items as $item) {
+            $status = strtolower(trim((string) ($item['status'] ?? '')));
+            $hasResolution = trim((string) ($item['accion_correctiva'] ?? '')) !== '';
+            $hasEndDate = trim((string) ($item['fecha_termino'] ?? '')) !== '';
+
+            $resolvedByStatus = in_array($status, [
+                'resuelta',
+                'resuelto',
+                'cerrada',
+                'cerrado',
+                'completada',
+                'completado',
+                'finalizada',
+                'finalizado',
+                'liberada',
+                'liberado',
+                'ok',
+            ], true);
+
+            if (! $resolvedByStatus && ! $hasResolution && ! $hasEndDate) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isClosingState(mixed $state): bool
+    {
+        return strtolower(trim((string) $state)) === 'cerrada';
     }
 
     private function catalogItemRules(string $prefix): array

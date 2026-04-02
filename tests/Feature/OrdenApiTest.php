@@ -112,6 +112,98 @@ class OrdenApiTest extends TestCase
         $response->assertJsonMissingPath('data.0.discrepancias.0');
     }
 
+    public function test_it_returns_admin_dashboard_summary_from_backend(): void
+    {
+        $this->seed();
+
+        $area = Area::where('codigo', 'AVCS')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'AVCS')->firstOrFail();
+        $user = User::firstOrFail();
+
+        $this->postJson('/api/v1/ordenes', [
+            'area_id' => $area->id,
+            'tipo_id' => $tipo->id,
+            'user_id' => $user->id,
+            'descripcion' => 'Orden para tablero administrativo',
+            'cliente' => 'Cliente Resumen',
+            'matricula' => 'XA-ADM',
+            'estado' => 'cerrada',
+            'generar_tareas_ata' => false,
+            'discrepancias' => [
+                [
+                    'item' => '01',
+                    'descripcion' => 'Discrepancia con mano de obra',
+                    'horas_hombre' => 3.5,
+                ],
+            ],
+            'refacciones' => [
+                [
+                    'item' => '01',
+                    'nombre' => 'Arnes',
+                    'cantidad' => 2,
+                    'solicitante_fecha' => now()->toDateString(),
+                    'area_procedencia' => 'ALM',
+                    'recibe_fecha' => now()->toDateString(),
+                    'costo_total' => 1250,
+                    'precio_venta' => 1600,
+                ],
+            ],
+            'consumibles' => [
+                [
+                    'item' => '01',
+                    'nombre' => 'Termofit',
+                    'cantidad' => 1,
+                    'solicitante_fecha' => now()->toDateString(),
+                    'area_procedencia' => 'ALM',
+                    'recibe_fecha' => now()->toDateString(),
+                    'costo_total' => 300,
+                    'precio_venta' => 450,
+                ],
+            ],
+            'talleres_externos' => [
+                [
+                    'item' => '01',
+                    'proveedor' => 'Proveedor QA',
+                    'recepcion' => now()->toDateString(),
+                    'costo' => 500,
+                    'precio_venta' => 700,
+                ],
+            ],
+            'ndt' => [
+                [
+                    'item' => '01',
+                    'tipo_prueba' => 'Liquidos penetrantes',
+                    'recepcion' => now()->toDateString(),
+                    'costo_total' => 200,
+                    'precio_venta' => 280,
+                ],
+            ],
+        ])->assertCreated();
+
+        $response = $this->getJson('/api/v1/admin/dashboard/resumen');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_ordenes', 1)
+            ->assertJsonPath('data.refacciones_registros', 1)
+            ->assertJsonPath('data.consumibles_registros', 1)
+            ->assertJsonPath('data.talleres_registros', 1)
+            ->assertJsonPath('data.ndt_registros', 1)
+            ->assertJsonPath('data.horas_hombre', 3.5)
+            ->assertJsonPath('data.costo_refacciones', 1250)
+            ->assertJsonPath('data.costo_consumibles', 300)
+            ->assertJsonPath('data.costo_talleres', 500)
+            ->assertJsonPath('data.costo_total', 2050)
+            ->assertJsonPath('data.venta_total', 3030)
+            ->assertJsonPath('data.por_facturar', 1)
+            ->assertJsonPath('data.por_cobrar_monto', 3030)
+            ->assertJsonPath('data.proveedores', 1)
+            ->assertJsonPath('data.top_cliente', 'Cliente Resumen')
+            ->assertJsonPath('data.top_matricula', 'XA-ADM')
+            ->assertJsonPath('data.top_area', 'AVCS');
+    }
+
     public function test_it_creates_an_order_linked_to_a_motor(): void
     {
         $this->seed();

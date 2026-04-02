@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Area;
 use App\Models\AtaSubchapter;
+use App\Models\Manual;
 use App\Models\Motor;
 use App\Models\Orden;
 use App\Models\Tarea;
@@ -17,9 +18,406 @@ class OrdenSeeder extends Seeder
     public function run(): void
     {
         $user = User::firstOrFail();
+        $this->seedManualRecords();
         $this->seedAvionicsExample($user);
         $this->seedHangarMotorExample($user);
         $this->seedRequestedExamples($user);
+        $this->seedSharedExcelExamples($user);
+    }
+
+    private function seedManualRecords(): void
+    {
+        $manuales = [
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\ALFA\\CESA-BATT25-004 - XB-SBG - INGRESAN A DEEP CYCLE BATERIA.xlsx',
+                'nombre' => 'CESA-BATT25-004 - XB-SBG - INGRESAN A DEEP CYCLE BATERIA',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\ALFA\\CESA-ESTR25-030 - XA-ZYZ - APLICACION DE PRIMER  A AIR INLET ASSY ENGINE NACELLE RH y LH.xlsx',
+                'nombre' => 'CESA-ESTR25-030 - XA-ZYZ - APLICACION DE PRIMER  A AIR INLET ASSY ENGINE NACELLE RH y LH',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\ALFA\\CESA-FREN26-001 - INSPECCION DE CONDICIÓN A BRAKE ASSY.xlsx',
+                'nombre' => 'CESA-FREN26-001 - INSPECCION DE CONDICIÓN A BRAKE ASSY',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\ALFA\\CESA-HANG26-016 - XA-MMN - Recarga de oxígeno.xlsx',
+                'nombre' => 'CESA-HANG26-016 - XA-MMN - Recarga de oxígeno',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\ALFA\\CESA-TREN25-007 - LV-FVT - INSPECCION Y ARMADO DE WHEEL ASSY.xlsx',
+                'nombre' => 'CESA-TREN25-007 - LV-FVT - INSPECCION Y ARMADO DE WHEEL ASSY',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+        ];
+
+        foreach ($manuales as $manual) {
+            Manual::updateOrCreate(
+                ['archivo_path' => $manual['archivo_path']],
+                $manual
+            );
+        }
+    }
+
+    private function seedSharedExcelExamples(User $user): void
+    {
+        $this->seedBatt25004Example($user);
+        $this->seedEstr25030Example($user);
+        $this->seedFren26001Example($user);
+        $this->seedHang26016ExcelExample($user);
+        $this->seedTren25007Example($user);
+    }
+
+    // CESA-BATT25-004
+    private function seedBatt25004Example(User $user): void
+    {
+        $area = Area::where('codigo', 'BATT')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'BATT')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-BATT25-004'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 4,
+                'anio' => 2025,
+                'fecha' => '2025-01-01',
+                'cliente' => 'CESA',
+                'matricula' => 'XB-SBG',
+                'aeronave_modelo' => 'CESSNA 650',
+                'aeronave_serie' => '650-0071',
+                'descripcion' => 'INGRESAN A DEEP CYCLE BATERIA',
+                'trabajo_descripcion' => 'INGRESAN A DEEP CYCLE BATERIA',
+                'componente_descripcion' => 'INGRESAN A DEEP CYCLE BATERIA',
+                'componente_numero_parte' => '025008-000',
+                'componente_numero_serie' => '052014',
+                'tipo_tarea' => 'SERVICIO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Ingreso de bateria a proceso deep cycle.',
+                'tecnico_responsable' => 'Pendiente',
+                'inspector' => 'Pendiente',
+                'fecha_inicio' => '2025-01-01',
+                'fecha_termino' => '2025-01-01',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                [
+                    'titulo' => 'Ingreso a deep cycle',
+                    'descripcion' => 'Ingreso de bateria a proceso deep cycle. Componente P/N 025008-000, S/N 052014.',
+                    'orden' => 1,
+                    'tipo' => 'SERVICIO',
+                    'prioridad' => 'MEDIA',
+                    'tiempo_estimado_min' => 60,
+                    'estado' => 'completada',
+                    'tecnico' => 'Pendiente',
+                ],
+            ],
+            'discrepancias' => [],
+            'refacciones' => [],
+            'consumibles' => [],
+            'herramientas' => [],
+            'ndt' => [],
+            'talleres_externos' => [],
+            'mediciones' => [],
+        ]);
+    }
+
+    // CESA-ESTR25-030
+    private function seedEstr25030Example(User $user): void
+    {
+        $area = Area::where('codigo', 'ESTR')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'ESTR')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-ESTR25-030'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 30,
+                'anio' => 2025,
+                'fecha' => '2025-04-25',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-ZYZ',
+                'aeronave_modelo' => 'LEARJET 31',
+                'aeronave_serie' => 'UNK',
+                'descripcion' => 'APLICACION DE PRIMER A AIR INLET ASSY ENGINE NACELLE RH Y LH',
+                'trabajo_descripcion' => 'APLICACION DE PRIMER A AIR INLET ASSY ENGINE NACELLE RH NP:2652010-096 Y LH NP:2652010-81',
+                'componente_descripcion' => 'AIR INLET ASSY ENGINE NACELLE RH Y LH',
+                'componente_numero_parte' => '2652010-096 / 2652010-81',
+                'tipo_tarea' => 'REPARACION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realizo reparacion con tela fibra de vidrio y resina Loctite EA9396, lijado y aplicacion de primer.',
+                'tecnico_responsable' => 'JORGE GARCIA',
+                'inspector' => 'Pendiente',
+                'fecha_inicio' => '2025-04-25',
+                'fecha_termino' => '2025-04-25',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                ['titulo' => 'Lijado y desengrasado', 'descripcion' => 'Lijado y desengrasado del componente previo a reparacion y primer.', 'orden' => 1, 'tipo' => 'PREPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'JORGE GARCIA'],
+                ['titulo' => 'Reparacion con fibra de vidrio', 'descripcion' => 'Pegado de piel de fibra de vidrio de 8\"x2\" con resina Loctite 9396.', 'orden' => 2, 'tipo' => 'REPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'JORGE GARCIA'],
+                ['titulo' => 'Aplicacion de primer', 'descripcion' => 'Lijado y aplicacion de primer cromato de zinc en nacela RH y LH.', 'orden' => 3, 'tipo' => 'PINTURA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'JORGE GARCIA'],
+            ],
+            'discrepancias' => [
+                ['item' => '01', 'descripcion' => 'Durante la preparacion de la nacela para aplicacion de primer se encontro daño en la estructura.', 'accion_correctiva' => 'Se realizo reparacion con tela fibra de vidrio y resina Loctite EA9396. Se dejo en condiciones operativas y se aplico primer.', 'status' => 'cerrada', 'fecha_inicio' => '2025-04-25', 'fecha_termino' => '2025-04-25'],
+                ['item' => '02', 'descripcion' => 'Durante la preparacion de la nacela para aplicacion de primer se encontro daño en la estructura.', 'accion_correctiva' => 'Se realizo reparacion con tela fibra de vidrio y resina Loctite EA9396. Se dejo en condiciones operativas y se aplico primer.', 'status' => 'cerrada', 'fecha_inicio' => '2025-04-25', 'fecha_termino' => '2025-04-25'],
+            ],
+            'refacciones' => [],
+            'consumibles' => [
+                ['item' => 'C1', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'RESINA LOCTITE EA 9396', 'descripcion' => 'REPARACION', 'cantidad' => '150G', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C2', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'LIJA NO.320', 'descripcion' => 'REPARACION', 'cantidad' => '320', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C3', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'LIJA NO.220', 'descripcion' => 'REPARACION', 'cantidad' => '220', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C4', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'LIJA NO.80', 'descripcion' => 'REPARACION', 'cantidad' => '4', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C5', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'PIEL FIBRA DE VIDRIO', 'descripcion' => 'REPARACION', 'cantidad' => '12\"X3\"', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C6', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'PELICULA DE NAILON', 'descripcion' => 'REPARACION', 'cantidad' => '20\"X2\"', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C7', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'CINTA PARA DUCTOS', 'descripcion' => 'REPARACION', 'cantidad' => '40CM', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C8', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'TRAPO', 'descripcion' => 'REPARACION', 'cantidad' => '.5 KG', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C9', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'MEK', 'descripcion' => 'REPARACION', 'cantidad' => '.5 LTS', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C10', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'VASOS DESECHABLE', 'descripcion' => 'REPARACION', 'cantidad' => '10 PZA', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C11', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'CROMATO DE ZINC', 'descripcion' => 'REPARACION', 'cantidad' => '0.5 LTS', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C12', 'solicitante_fecha' => '2025-04-25', 'nombre' => 'PAÑO RESPIRADOR PURGADOR', 'descripcion' => 'REPARACION', 'cantidad' => '15\"X5\"', 'status' => 'ENTREGADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+            ],
+            'herramientas' => [],
+            'ndt' => [],
+            'talleres_externos' => [],
+            'mediciones' => [],
+        ]);
+    }
+
+    // CESA-FREN26-001
+    private function seedFren26001Example(User $user): void
+    {
+        $area = Area::where('codigo', 'FREN')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'FREN')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-FREN26-001'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 1,
+                'anio' => 2026,
+                'fecha' => '2026-01-03',
+                'cliente' => 'CORE DE VICTOR GAMBOA (CESA)',
+                'matricula' => '-',
+                'aeronave_modelo' => 'CESSNA 650',
+                'aeronave_serie' => '-',
+                'descripcion' => 'INSPECCION DE CONDICION A BRAKE ASSY',
+                'trabajo_descripcion' => 'INSPECCION DE CONDICION A BRAKE ASSY',
+                'componente_descripcion' => 'BRAKE ASSY',
+                'componente_numero_parte' => '2-1502-3',
+                'componente_numero_serie' => '1129',
+                'tipo_tarea' => 'INSPECCION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Inspeccion, tratamiento de oxido, armado, aplicacion de torque y pruebas para detectar fugas de hidraulico.',
+                'tecnico_responsable' => 'Tec. Hilario Gutierrez Hernandez',
+                'inspector' => 'Pendiente',
+                'fecha_inicio' => '2026-01-03',
+                'fecha_termino' => '2026-01-08',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                ['titulo' => 'Recepcion de componente', 'descripcion' => '03-01-26. Se recepciona componente.', 'orden' => 1, 'tipo' => 'RECEPCION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Desarmado de componente', 'descripcion' => '03-01-26. Se realiza desarmado de componente.', 'orden' => 2, 'tipo' => 'DESENSAMBLE', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Limpieza de discos y accesorios', 'descripcion' => '03-01-26. Limpieza de discos y accesorios.', 'orden' => 3, 'tipo' => 'LIMPIEZA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Inspeccion visual', 'descripcion' => '03-01-26. Inspeccion visual del componente.', 'orden' => 4, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Tratamiento a oxido de discos', 'descripcion' => '06-01-25. Tratamiento a oxido de discos.', 'orden' => 5, 'tipo' => 'REPARACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Armado de componente', 'descripcion' => '07-01-26. Armado de componente.', 'orden' => 6, 'tipo' => 'ARMADO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Aplicacion de torque', 'descripcion' => '07-01-26. Aplicacion de torque indicado en manual.', 'orden' => 7, 'tipo' => 'AJUSTE', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Prueba de fugas', 'descripcion' => '07-01-26. Pruebas para detectar fugas de hidraulico.', 'orden' => 8, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Desarmado y armado final', 'descripcion' => '08-01-26. Desarmado y armado total para aplicacion de Loctite, anti-seize, torque seal y frenado de tapones.', 'orden' => 9, 'tipo' => 'ARMADO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 360, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+            ],
+            'discrepancias' => [],
+            'refacciones' => [
+                ['item' => 'R1', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 35, RETAINER PACKING', 'descripcion' => 'ARMADO', 'cantidad' => 1, 'numero_parte' => '56-627', 'status' => 'MINISTRADO E INSTALADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'R2', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 30, PREFORMED PACKING', 'descripcion' => 'ARMADO', 'cantidad' => 1, 'numero_parte' => 'MS 28775-012', 'status' => 'MINISTRADO E INSTALADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'R3', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 225, PREFORMED PACKING', 'descripcion' => 'ARMADO', 'cantidad' => 4, 'numero_parte' => 'MS 28778-4', 'status' => 'MINISTRADO E INSTALADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'R4', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 25, SHUTTLE VALVE', 'descripcion' => 'ARMADO', 'cantidad' => 1, 'numero_parte' => '195-171', 'status' => 'NO MINISTRADO'],
+                ['item' => 'R5', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 15, BOLT MACHINE', 'descripcion' => 'ARMADO', 'cantidad' => 2, 'numero_parte' => 'AN4H5A', 'status' => 'MINISTRADO E INSTALADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'R6', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ITEM. 20, WASHER FLAT', 'descripcion' => 'ARMADO', 'cantidad' => 2, 'numero_parte' => 'AN960-416', 'status' => 'MINISTRADO E INSTALADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+            ],
+            'consumibles' => [
+                ['item' => 'C1', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'M.E.K.', 'descripcion' => 'LIMPIEZA', 'cantidad' => '1 LITRO', 'numero_parte' => 'UNK', 'status' => 'MINISTRADO Y USADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C2', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ALCOHOL', 'descripcion' => 'LIMPIEZA', 'cantidad' => '1 LITRO', 'numero_parte' => 'UNK', 'status' => 'MINISTRADO Y USADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C3', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'TRAPO LIMPIO', 'descripcion' => 'LIMPIEZA', 'cantidad' => '1/2 KILO', 'numero_parte' => 'UNK', 'status' => 'MINISTRADO Y USADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C4', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'LIQUIDO HIDRAULICO', 'descripcion' => 'PRUEBAS', 'cantidad' => '1/2 QUARTO', 'numero_parte' => 'MIL-PRF-83282', 'status' => 'MINISTRADO Y USADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C5', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'COMPOUND THREAD-LOCK', 'descripcion' => 'ARMADO', 'cantidad' => '10 ML', 'numero_parte' => 'LOCTITE 262', 'status' => 'SE USO UN COMPATIBLE', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C6', 'solicitante_fecha' => '2026-01-07', 'nombre' => 'ANTI-SEIZE COMPOUND', 'descripcion' => 'ARMADO', 'cantidad' => '1/4 LB', 'numero_parte' => 'SAE AMS 2518 (MIL-T5544)', 'status' => 'SE USO UN COMPATIBLE', 'area_procedencia' => 'ALMACEN GENERAL'],
+            ],
+            'herramientas' => [],
+            'ndt' => [],
+            'talleres_externos' => [],
+            'mediciones' => [],
+        ]);
+    }
+
+    // CESA-HANG26-016
+    private function seedHang26016ExcelExample(User $user): void
+    {
+        $area = Area::where('codigo', 'HANG')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'HANG')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-HANG26-016'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 16,
+                'anio' => 2026,
+                'fecha' => '2026-01-15',
+                'cliente' => 'SKY JETS INTERNATIONAL',
+                'matricula' => 'XA-MMN',
+                'aeronave_modelo' => 'LEARJET 35',
+                'aeronave_serie' => '221',
+                'descripcion' => 'Recarga de oxigeno a camilla de XA-MMN',
+                'trabajo_descripcion' => 'Recarga de oxigeno a camilla de XA-MMN',
+                'componente_descripcion' => 'Botella de oxigeno instalada en camilla',
+                'tipo_tarea' => 'SERVICIO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realizo recarga de oxigeno en botella de oxigeno instalada en camilla de aeronave.',
+                'tecnico_responsable' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'inspector' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'fecha_inicio' => '2026-01-15',
+                'fecha_termino' => '2026-01-15',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                ['titulo' => 'Recarga de oxigeno', 'descripcion' => '15/01/26. Se realizo recarga de oxigeno en botella de oxigeno instalada en camilla de aeronave.', 'orden' => 1, 'tipo' => 'SERVICIO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin 202504522'],
+            ],
+            'discrepancias' => [],
+            'refacciones' => [],
+            'consumibles' => [
+                ['item' => 'C1', 'solicitante_fecha' => '2026-01-15', 'nombre' => 'Oxigeno', 'descripcion' => 'Recarga de botella de oxigeno', 'cantidad' => '2000 PSI', 'numero_parte' => '-', 'status' => 'ENTREGADO', 'certificado_conformidad' => '-', 'area_procedencia' => 'ALMACEN HANGAR'],
+            ],
+            'herramientas' => [],
+            'ndt' => [],
+            'talleres_externos' => [],
+            'mediciones' => [],
+        ]);
+    }
+
+    // CESA-TREN25-007
+    private function seedTren25007Example(User $user): void
+    {
+        $area = Area::where('codigo', 'TREN')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'TREN')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-TREN25-007'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 7,
+                'anio' => 2025,
+                'fecha' => '2025-03-03',
+                'cliente' => 'CESA',
+                'matricula' => 'LV-FVT',
+                'aeronave_modelo' => 'CESSNA 650',
+                'aeronave_serie' => '650-0004',
+                'descripcion' => 'INSPECCION Y ARMADO DE WHEEL ASSY',
+                'trabajo_descripcion' => 'INSPECCION Y ARMADO DE WHEEL ASSY',
+                'componente_descripcion' => 'WHEEEL ASSY',
+                'componente_modelo' => 'GOODRICH',
+                'componente_numero_parte' => '9914136-8',
+                'tipo_tarea' => 'INSPECCION Y ARMADO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Desarmado, despintado, inspeccion NDT, preparacion para pintura y armado parcial del componente.',
+                'tecnico_responsable' => 'Hilario Gutierrez Hernandez',
+                'inspector' => 'Pendiente',
+                'fecha_inicio' => '2025-03-07',
+                'fecha_termino' => '2025-03-25',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                ['titulo' => 'Desarmado e inicio de despintado', 'descripcion' => '07-03-25. Se realiza desarmado y se inicia despintado de componentes.', 'orden' => 1, 'tipo' => 'DESENSAMBLE', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Conclusion de despintado', 'descripcion' => '18-03-25. Se concluye despintado y detallado de pintura.', 'orden' => 2, 'tipo' => 'PINTURA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Envio a inspeccion NDI', 'descripcion' => '19-03-25. Se envia a inspeccion por NDI (liquidos penetrantes).', 'orden' => 3, 'tipo' => 'NDT', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Requisiciones de material', 'descripcion' => '20-03-25. Se efectuan requisiciones de material.', 'orden' => 4, 'tipo' => 'ABASTO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Preparacion para pintura', 'descripcion' => '21-03-25. Se limpia y prepara para pintura.', 'orden' => 5, 'tipo' => 'PREPARACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+                ['titulo' => 'Armado parcial de componente', 'descripcion' => '25-03-25. Se realiza armado parcial de componente.', 'orden' => 6, 'tipo' => 'ARMADO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Hilario Gutierrez Hernandez'],
+            ],
+            'discrepancias' => [
+                ['item' => '01', 'descripcion' => 'Se realiza inspeccion a masas por NDT.', 'accion_correctiva' => 'Se reemplaza masa por presentar fisura.', 'status' => 'cerrada', 'fecha_inicio' => '2025-03-19', 'fecha_termino' => '2025-03-19', 'componente_numero_parte_off' => '300-549-1', 'componente_numero_serie_off' => '2142', 'componente_numero_parte_on' => '300-549-1', 'componente_numero_serie_on' => '1735'],
+            ],
+            'refacciones' => [
+                ['item' => 'R1', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 10A. TIRE MAIN LANDING GEAR', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => '226K08-4', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R2', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM. 65. PACKING PREFORMED', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => '68-559', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R3', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 45 GROMMET', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'TRRG30', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R4', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 5. SEAL ASSEMBLY OUTER', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => '68-1055', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R5', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 10, CONE BEARING', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'LL205449', 'status' => 'RESGUARDO EN ALMACEN', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R6', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 15, SEAL ASSEMBLY INNER', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => '68-1054', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R7', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 20, CONE, BEARING', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'LM806649', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R8', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 30, CAP, VALVE', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'TRVC5', 'status' => 'ENTREGADO', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R9', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 35, VALVE, INSIDE', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'TRC4', 'status' => 'ENTREGADO', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R10', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 2, SCREW', 'descripcion' => 'REEMPLAZO', 'cantidad' => 2, 'numero_parte' => 'AN503-8-12', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R11', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 3, WASHER', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => '6241108-4', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R12', 'solicitante_fecha' => '2025-03-03', 'nombre' => 'ITEM 4, NUT', 'descripcion' => 'REEMPLAZO', 'cantidad' => 1, 'numero_parte' => 'MS21025-32', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R13', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'HUB CAP ASSEMBLY', 'descripcion' => 'INSTALACION', 'cantidad' => 1, 'numero_parte' => '9914078-7', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R14', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'SCREW', 'descripcion' => 'INSTALACION', 'cantidad' => 3, 'numero_parte' => 'AN502-10-8', 'status' => 'PENDIENTE COTIZACION', 'area_procedencia' => 'COMPRAS'],
+                ['item' => 'R15', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'WASHER', 'descripcion' => 'INSTALACION', 'cantidad' => 3, 'numero_parte' => 'NAS1149F0332P', 'status' => 'RESGUARDO EN ALMACEN', 'area_procedencia' => 'COMPRAS'],
+            ],
+            'consumibles' => [
+                ['item' => 'C1', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'ALCOHOL ISOPROPILICO', 'descripcion' => 'USO GENERAL', 'cantidad' => '2 LTS', 'status' => '1 LITRO MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C2', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'REMOVEDOR DE PINTURA', 'descripcion' => 'USO GENERAL', 'cantidad' => '1 LT', 'status' => 'MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C3', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'EPOXY PRIMER TYPE 1 CLASS C OR N', 'descripcion' => 'USO GENERAL', 'cantidad' => '1 LT', 'numero_parte' => 'MIL-P-23377', 'status' => 'MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C4', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'LINEAR POLYURETHANE TOPCOAT', 'descripcion' => 'USO GENERAL', 'cantidad' => '1 LT', 'numero_parte' => 'ALUMINUM COLOR G1053', 'status' => 'MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C5', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'STANDARD TOPCOAT CONVERTER', 'descripcion' => 'USO GENERAL', 'cantidad' => '250 ML', 'numero_parte' => 'AWL-CAT #2 G3010', 'status' => 'MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C6', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'URETHANE TOPCOAT REDUCER', 'descripcion' => 'USO GENERAL', 'cantidad' => '250 ML', 'numero_parte' => 'T0003', 'status' => 'MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C7', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'TRAPO LIMPIO', 'descripcion' => 'USO GENERAL', 'cantidad' => '2 KG', 'numero_parte' => 'N/A', 'status' => '1 KILO MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C8', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'THINNER STANDARD', 'descripcion' => 'USO GENERAL', 'cantidad' => '2 LTS', 'status' => '1 LITRO MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C9', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'NITROGENO', 'descripcion' => 'USO GENERAL', 'cantidad' => '200 LBS', 'status' => 'PENDIENTE AUTORIZACION'],
+                ['item' => 'C10', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'GUANTES DE NITRILO M', 'descripcion' => 'USO GENERAL', 'cantidad' => '10 PARES', 'status' => '5 PARES MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+                ['item' => 'C11', 'solicitante_fecha' => '2025-03-06', 'nombre' => 'FIBRAS SCOTCH BRITE', 'descripcion' => 'USO GENERAL', 'cantidad' => '2', 'numero_parte' => '3M', 'status' => '1 PIEZA MINISTRADO', 'area_procedencia' => 'ALMACEN GENERAL'],
+            ],
+            'herramientas' => [],
+            'ndt' => [
+                ['item' => '1.0', 'tipo_prueba' => 'LIQUIDOS PENETRANTES', 'cantidad' => 1, 'sub_componente' => 'WHEEL HALF ASSEMBLY OUTER', 'numero_parte' => '300-549-1', 'numero_serie' => '2142', 'resultado' => 'COMPROBACION COMPONENTE', 'certificado' => 'No cuenta con certificado'],
+            ],
+            'talleres_externos' => [
+                ['item' => '1.0', 'tarea' => 'PINTURA', 'cantidad' => 1, 'sub_componente' => 'WHEEL HALF ASSEMBLY INNER', 'numero_parte' => '300-550-6', 'numero_serie' => '1946', 'trabajo_realizado' => 'Aplicacion de primer base y pintura poliuretano color aluminio', 'proveedor' => 'TALLER DE PINTURA'],
+                ['item' => '2.0', 'tarea' => 'PINTURA', 'cantidad' => 1, 'sub_componente' => 'WHEEL HALF ASSEMBLY OUTER', 'numero_parte' => '300-549-1', 'numero_serie' => '1735', 'trabajo_realizado' => 'Aplicacion de primer base y pintura poliuretano color aluminio', 'proveedor' => 'TALLER DE PINTURA'],
+            ],
+            'mediciones' => [],
+        ]);
     }
 
     private function seedAvionicsExample(User $user): void
@@ -160,6 +558,8 @@ class OrdenSeeder extends Seeder
         ]);
     }
 
+
+    // CESA-HANG25-097
     private function seedHangarMotorExample(User $user): void
     {
         $area = Area::where('codigo', 'HANG')->firstOrFail();
@@ -263,6 +663,7 @@ class OrdenSeeder extends Seeder
         ]);
     }
 
+    // CESA-TREN25-033
     private function seedRequestedExamples(User $user): void
     {
         $examples = [
@@ -638,7 +1039,62 @@ class OrdenSeeder extends Seeder
         $orden->{$relation}()->delete();
 
         foreach ($items as $item) {
-            $orden->{$relation}()->create($item);
+            $orden->{$relation}()->create($this->normalizeRelationItem($relation, $item));
         }
+    }
+
+    private function normalizeRelationItem(string $relation, array $item): array
+    {
+        if (! array_key_exists('cantidad', $item) || $item['cantidad'] === null || $item['cantidad'] === '') {
+            return $item;
+        }
+
+        if (is_int($item['cantidad'])) {
+            return $item;
+        }
+
+        $rawQuantity = trim((string) $item['cantidad']);
+
+        if ($rawQuantity === '') {
+            $item['cantidad'] = null;
+
+            return $item;
+        }
+
+        if (preg_match('/-?\d+(?:[.,]\d+)?/', $rawQuantity, $matches) !== 1) {
+            $item['cantidad'] = 1;
+            $this->appendQuantityNote($relation, $item, $rawQuantity);
+
+            return $item;
+        }
+
+        $normalized = (int) floor((float) str_replace(',', '.', $matches[0]));
+        $item['cantidad'] = max(1, $normalized);
+
+        if ((string) $item['cantidad'] !== $rawQuantity) {
+            $this->appendQuantityNote($relation, $item, $rawQuantity);
+        }
+
+        return $item;
+    }
+
+    private function appendQuantityNote(string $relation, array &$item, string $rawQuantity): void
+    {
+        $note = 'Cantidad original: ' . $rawQuantity;
+
+        if (in_array($relation, ['ndt', 'talleresExternos'], true)) {
+            $field = $relation === 'ndt' ? 'resultado' : 'observaciones';
+            $item[$field] = trim(implode('. ', array_filter([
+                $item[$field] ?? null,
+                $note,
+            ])));
+
+            return;
+        }
+
+        $item['descripcion'] = trim(implode('. ', array_filter([
+            $item['descripcion'] ?? null,
+            $note,
+        ])));
     }
 }

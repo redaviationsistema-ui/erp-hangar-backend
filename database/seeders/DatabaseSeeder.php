@@ -17,7 +17,6 @@ class DatabaseSeeder extends Seeder
             MotorSeeder::class,
             UserSeeder::class,
             OrdenSeeder::class,
-            ManualSeeder::class,
         ]);
     }
 }

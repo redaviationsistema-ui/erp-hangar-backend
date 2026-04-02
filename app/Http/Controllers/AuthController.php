@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -38,9 +39,22 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        AuditLogger::log('login', "Inicio de sesion del usuario {$user->email}.", [
+            'user_id' => $user->id,
+            'entity_type' => 'session',
+            'entity_id' => $user->id,
+            'entity_label' => $user->email,
+            'context' => [
+                'area_id' => $user->area_id,
+                'rol' => $user->rol,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
-            'token' => $user->createToken('api-token')->plainTextToken,
+            'token' => $token,
             'user' => $this->serializeUser($user),
         ]);
     }
@@ -70,6 +84,13 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        AuditLogger::log('logout', 'Cierre de sesion del usuario autenticado.', [
+            'user_id' => $request->user()?->id,
+            'entity_type' => 'session',
+            'entity_id' => $request->user()?->id,
+            'entity_label' => $request->user()?->email,
+        ]);
+
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json([
