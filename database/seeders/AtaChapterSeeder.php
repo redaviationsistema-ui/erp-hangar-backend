@@ -218,3 +218,4 @@ class AtaChapterSeeder extends Seeder
         }
     }
 }
+
