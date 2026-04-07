@@ -22,6 +22,20 @@ class ConsumibleController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePayload($request, false);
+        $this->authorizeOperationalPayload($request, $data, [
+            'item',
+            'solicitante_fecha',
+            'solicitante_nombre',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'area_procedencia',
+            'recibe_fecha',
+            'recibe_nombre',
+        ]);
         $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         $this->authorizeInventoryPricingIfPresent($request, $data);
 
@@ -39,6 +53,21 @@ class ConsumibleController extends Controller
     {
         $this->authorizeOrderArea($request, $consumible);
         $data = $this->validatePayload($request, true);
+        $this->authorizeOperationalPayload($request, $data, [
+            'orden_id',
+            'item',
+            'solicitante_fecha',
+            'solicitante_nombre',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'area_procedencia',
+            'recibe_fecha',
+            'recibe_nombre',
+        ]);
         $this->authorizeInventoryPricingIfPresent($request, $data);
         if (array_key_exists('orden_id', $data)) {
             $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
@@ -52,6 +81,7 @@ class ConsumibleController extends Controller
     public function destroy(Consumible $consumible)
     {
         $this->authorizeOrderArea(request(), $consumible);
+        $this->authorizeTecnicoOnly(request());
         $consumible->delete();
 
         return response()->json(['success' => true, 'message' => 'Consumible eliminado correctamente.']);

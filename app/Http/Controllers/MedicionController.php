@@ -24,6 +24,8 @@ class MedicionController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePayload($request, false);
+        $this->authorizeTecnicoOnly($request);
+        $this->authorizeOrderAreaCodeAllowed($request, (int) $data['orden_id'], ['TREN', 'FREN']);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'mediciones', [
             'foto',
             'imagen',
@@ -54,6 +56,8 @@ class MedicionController extends Controller
     {
         $this->authorizeOrderArea($request, $medicione);
         $data = $this->validatePayload($request, true);
+        $this->authorizeTecnicoOnly($request);
+        $this->authorizeOrderAreaCodeAllowed($request, (int) ($data['orden_id'] ?? $medicione->orden_id), ['TREN', 'FREN']);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'mediciones', [
             'foto',
             'imagen',
@@ -78,6 +82,7 @@ class MedicionController extends Controller
     public function destroy(Medicion $medicione)
     {
         $this->authorizeOrderArea(request(), $medicione);
+        $this->authorizeTecnicoOnly(request());
         $this->deleteStoredImage($medicione->imagen_path);
         $medicione->delete();
 
@@ -93,8 +98,8 @@ class MedicionController extends Controller
             'descripcion' => ($partial ? 'sometimes' : 'required') . '|string',
             'manual_od' => 'sometimes|nullable|string|max:255',
             'manual_id' => 'sometimes|nullable|string|max:255',
-            'resultado_od' => 'sometimes|nullable|string|max:255',
-            'resultado_id' => 'sometimes|nullable|string|max:255',
+            'resultado_od' => 'sometimes|nullable|in:DENTRO DE PARAMETROS,FUERA DE PARAMETROS',
+            'resultado_id' => 'sometimes|nullable|in:DENTRO DE PARAMETROS,FUERA DE PARAMETROS',
             'imagen_path' => 'sometimes|nullable|string|max:2048',
             'foto' => 'sometimes|nullable|image|max:5120',
             'imagen' => 'sometimes|nullable|image|max:5120',

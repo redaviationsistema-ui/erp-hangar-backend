@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             AtaTaskTemplateSeeder::class,
             AeronaveSeeder::class,
             MotorSeeder::class,
+            ManualSeeder::class,
             UserSeeder::class,
             OrdenSeeder::class,
         ]);

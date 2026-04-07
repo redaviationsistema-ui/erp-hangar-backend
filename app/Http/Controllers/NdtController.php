@@ -24,6 +24,28 @@ class NdtController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePayload($request, false);
+        $this->authorizeOperationalPayload($request, $data, [
+            'item',
+            'tipo_prueba',
+            'cantidad',
+            'sub_componente',
+            'numero_parte',
+            'numero_serie',
+            'evidencia_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'seccion_manual',
+            'certificado',
+            'envio_a',
+            'resultado',
+        ], true);
+        $this->authorizeOrderAreaCodeAllowed($request, (int) $data['orden_id'], ['HANG', 'FREN', 'TREN', 'HELI', 'PROP', 'ESTR']);
+        $this->authorizeAdministracionFields($request, $data, ['recepcion']);
         $this->storeIncomingImage($request, $data, 'evidencia_path', 'ndt', [
             'foto',
             'imagen',
@@ -34,6 +56,7 @@ class NdtController extends Controller
             'evidencia_base64',
         ]);
         $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
+        $this->authorizeInventoryPricingIfPresent($request, $data);
 
         $ndt = Ndt::create(SchemaPayload::forModel(new Ndt(), $data))->load('orden');
         $this->exposePublicFileUrl($ndt, 'evidencia_path', 'evidencia_url');
@@ -54,6 +77,29 @@ class NdtController extends Controller
     {
         $this->authorizeOrderArea($request, $ndt);
         $data = $this->validatePayload($request, true);
+        $this->authorizeOperationalPayload($request, $data, [
+            'orden_id',
+            'item',
+            'tipo_prueba',
+            'cantidad',
+            'sub_componente',
+            'numero_parte',
+            'numero_serie',
+            'evidencia_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'seccion_manual',
+            'certificado',
+            'envio_a',
+            'resultado',
+        ], true);
+        $this->authorizeOrderAreaCodeAllowed($request, (int) ($data['orden_id'] ?? $ndt->orden_id), ['HANG', 'FREN', 'TREN', 'HELI', 'PROP', 'ESTR']);
+        $this->authorizeAdministracionFields($request, $data, ['recepcion']);
         $this->storeIncomingImage($request, $data, 'evidencia_path', 'ndt', [
             'foto',
             'imagen',
@@ -66,6 +112,7 @@ class NdtController extends Controller
         if (array_key_exists('orden_id', $data)) {
             $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         }
+        $this->authorizeInventoryPricingIfPresent($request, $data);
 
         $this->replaceStoredImage($ndt->evidencia_path, $data['evidencia_path'] ?? null);
         $ndt->update(SchemaPayload::forModel($ndt, $data));
@@ -78,6 +125,7 @@ class NdtController extends Controller
     public function destroy(Ndt $ndt)
     {
         $this->authorizeOrderArea(request(), $ndt);
+        $this->authorizeEngineeringOrTecnico(request());
         $this->deleteStoredImage($ndt->evidencia_path);
         $ndt->delete();
 
@@ -101,11 +149,11 @@ class NdtController extends Controller
             'evidencia' => 'sometimes|nullable|image|max:5120',
             'seccion_manual' => 'sometimes|nullable|string|max:255',
             'certificado' => 'sometimes|nullable|string|max:255',
-            'envio_a' => 'sometimes|nullable|string|max:255',
-            'recepcion' => 'sometimes|nullable|string|max:255',
+            'envio_a' => 'sometimes|nullable|in:NAPSA,EXCEL',
+            'recepcion' => 'sometimes|nullable|date',
             'costo_total' => 'sometimes|nullable|numeric',
             'precio_venta' => 'sometimes|nullable|numeric',
-            'resultado' => 'sometimes|nullable|string|max:255',
+            'resultado' => 'sometimes|nullable|in:INSPECCION PROGRAMADA,INSPECCION NO PROGRAMADA,COMPROBACION,OH',
         ]);
     }
 }

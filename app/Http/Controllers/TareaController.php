@@ -67,6 +67,8 @@ class TareaController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeTecnicoOnly($request);
+
         $data = $request->validate([
             'orden_id' => 'required|exists:ordenes,id',
             'area_id' => 'nullable|exists:areas,id',
@@ -125,6 +127,7 @@ class TareaController extends Controller
     public function update(Request $request, Tarea $tarea)
     {
         $this->authorizeModelArea($request, $tarea);
+        $this->authorizeTecnicoOnly($request);
 
         $data = $request->validate([
             'area_id' => 'sometimes|nullable|exists:areas,id',
@@ -168,6 +171,7 @@ class TareaController extends Controller
     public function destroy(Tarea $tarea)
     {
         $this->authorizeModelArea(request(), $tarea);
+        $this->authorizeTecnicoOnly(request());
         $this->deleteStoredImage($tarea->foto_path);
         $tarea->delete();
         $this->bustCache();

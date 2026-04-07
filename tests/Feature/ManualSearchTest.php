@@ -66,6 +66,8 @@ class ManualSearchTest extends TestCase
 
     public function test_it_lists_source_pdf_files(): void
     {
+        $this->seed();
+
         $this->getJson('/api/v1/manuales/source-files')
             ->assertOk()
             ->assertJsonPath('success', true);

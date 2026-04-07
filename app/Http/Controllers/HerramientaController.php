@@ -22,6 +22,18 @@ class HerramientaController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePayload($request, false);
+        $this->authorizeOperationalPayload($request, $data, [
+            'item',
+            'solicitante_fecha',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'area_procedencia',
+            'recibe_fecha',
+        ]);
         $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         $this->authorizeInventoryPricingIfPresent($request, $data);
 
@@ -39,6 +51,19 @@ class HerramientaController extends Controller
     {
         $this->authorizeOrderArea($request, $herramienta);
         $data = $this->validatePayload($request, true);
+        $this->authorizeOperationalPayload($request, $data, [
+            'orden_id',
+            'item',
+            'solicitante_fecha',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'area_procedencia',
+            'recibe_fecha',
+        ]);
         $this->authorizeInventoryPricingIfPresent($request, $data);
         if (array_key_exists('orden_id', $data)) {
             $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
@@ -52,6 +77,7 @@ class HerramientaController extends Controller
     public function destroy(Herramienta $herramienta)
     {
         $this->authorizeOrderArea(request(), $herramienta);
+        $this->authorizeTecnicoOnly(request());
         $herramienta->delete();
 
         return response()->json(['success' => true, 'message' => 'Herramienta eliminada correctamente.']);

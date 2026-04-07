@@ -141,6 +141,120 @@ abstract class Controller
         return in_array($request->user()?->rol, ['admin', 'supervisor', 'administracion'], true);
     }
 
+    protected function normalizedUserEmail(Request $request): string
+    {
+        return strtolower(trim((string) $request->user()?->email));
+    }
+
+    protected function isEngineeringUser(Request $request): bool
+    {
+        return $this->normalizedUserEmail($request) === 'ing@redaviation.com';
+    }
+
+    protected function isAdministracionUser(Request $request): bool
+    {
+        return $request->user()?->rol === 'administracion'
+            || $this->normalizedUserEmail($request) === 'administracion@redaviation.com';
+    }
+
+    protected function isAdminGeneralUser(Request $request): bool
+    {
+        return $request->user()?->rol === 'admin'
+            && ! $this->isEngineeringUser($request)
+            && ! $this->isAdministracionUser($request);
+    }
+
+    protected function isTecnicoUser(Request $request): bool
+    {
+        return $request->user()?->rol === 'tecnico';
+    }
+
+    protected function authorizeTecnicoOnly(Request $request, string $message = 'Solo el tecnico del area puede modificar este registro.'): void
+    {
+        if ($this->isTecnicoUser($request)) {
+            return;
+        }
+
+        throw new HttpException(403, $message);
+    }
+
+    protected function authorizeEngineeringOrTecnico(Request $request, string $message = 'Solo Ingenieria o el tecnico del area pueden modificar este registro.'): void
+    {
+        if ($this->isTecnicoUser($request) || $this->isEngineeringUser($request)) {
+            return;
+        }
+
+        throw new HttpException(403, $message);
+    }
+
+    protected function authorizeOperationalPayload(
+        Request $request,
+        array $payload,
+        array $operationalKeys,
+        bool $allowEngineering = false,
+    ): void {
+        $hasOperationalChanges = false;
+
+        foreach ($operationalKeys as $key) {
+            if (! array_key_exists($key, $payload)) {
+                continue;
+            }
+
+            $hasOperationalChanges = true;
+            break;
+        }
+
+        if (! $hasOperationalChanges) {
+            return;
+        }
+
+        if ($allowEngineering) {
+            $this->authorizeEngineeringOrTecnico($request);
+
+            return;
+        }
+
+        $this->authorizeTecnicoOnly($request);
+    }
+
+    protected function authorizeNestedOperationalPayload(
+        Request $request,
+        array $items,
+        array $operationalKeys,
+        bool $allowEngineering = false,
+    ): void {
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $this->authorizeOperationalPayload(
+                $request,
+                $item,
+                $operationalKeys,
+                $allowEngineering,
+            );
+        }
+    }
+
+    protected function authorizeOrderAreaCodeAllowed(Request $request, int $orderId, array $allowedCodes): void
+    {
+        $order = \App\Models\Orden::query()
+            ->with('area:id,codigo')
+            ->findOrFail($orderId);
+
+        $this->authorizeAreaId($request, $order->area_id);
+
+        $code = strtoupper(trim((string) $order->area?->codigo));
+        $allowed = array_map(fn ($item) => strtoupper(trim((string) $item)), $allowedCodes);
+
+        if ($code !== '' && in_array($code, $allowed, true)) {
+            return;
+        }
+
+        throw new HttpException(403, 'Este modulo no esta habilitado para el area de la OT.');
+    }
+
     protected function authorizeInventoryPricing(Request $request): void
     {
         if ($this->canManageInventoryPricing($request)) {
@@ -152,8 +266,25 @@ abstract class Controller
 
     protected function authorizeInventoryPricingIfPresent(Request $request, array $payload): void
     {
-        if (array_key_exists('costo_total', $payload) || array_key_exists('precio_venta', $payload)) {
-            $this->authorizeInventoryPricing($request);
+        $costKeys = ['costo_total', 'costo'];
+
+        foreach ($costKeys as $costKey) {
+            if (array_key_exists($costKey, $payload) && ! $this->isAdministracionUser($request)) {
+                throw new HttpException(403, 'Solo Administracion/Inventario puede capturar costo.');
+            }
+        }
+
+        if (array_key_exists('precio_venta', $payload) && ! $this->isAdminGeneralUser($request)) {
+            throw new HttpException(403, 'Solo el administrador general puede capturar precio de venta.');
+        }
+    }
+
+    protected function authorizeAdministracionFields(Request $request, array $payload, array $keys): void
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $payload) && ! $this->isAdministracionUser($request)) {
+                throw new HttpException(403, 'Solo Administracion/Inventario puede capturar este campo.');
+            }
         }
     }
 
@@ -164,11 +295,7 @@ abstract class Controller
                 continue;
             }
 
-            if (array_key_exists('costo_total', $item) || array_key_exists('precio_venta', $item)) {
-                $this->authorizeInventoryPricing($request);
-
-                return;
-            }
+            $this->authorizeInventoryPricingIfPresent($request, $item);
         }
     }
 

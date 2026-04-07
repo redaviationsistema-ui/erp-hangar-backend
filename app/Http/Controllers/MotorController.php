@@ -10,7 +10,7 @@ class MotorController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', $request->query()), now()->addMinutes(5), function () use ($request) {
+        $payload = Cache::rememberForever($this->cacheKey('index', $request->query()), function () use ($request) {
             $includeCounts = $request->boolean('include_counts');
             $all = $request->boolean('all');
             $perPage = max(1, min($request->integer('per_page', 50), 100));
@@ -70,7 +70,7 @@ class MotorController extends Controller
 
     public function show(Motor $motor)
     {
-        $payload = Cache::remember($this->cacheKey('show', ['id' => $motor->id]), now()->addMinutes(5), function () use ($motor) {
+        $payload = Cache::rememberForever($this->cacheKey('show', ['id' => $motor->id]), function () use ($motor) {
             $motor->load([
                 'aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado',
                 'ordenes' => fn ($query) => $query

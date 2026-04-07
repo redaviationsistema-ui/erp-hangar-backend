@@ -23,6 +23,24 @@ class RefaccionController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePayload($request, false);
+        $this->authorizeOperationalPayload($request, $data, [
+            'item',
+            'solicitante_fecha',
+            'solicitante_nombre',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'certificado_conformidad_imagen',
+            'certificado_conformidad_imagen_base64',
+            'certificado_conformidad_foto',
+            'certificado_conformidad_imagen_file',
+            'area_procedencia',
+            'recibe_fecha',
+            'recibe_nombre',
+        ]);
         $this->storeIncomingImage($request, $data, 'certificado_conformidad_imagen', 'refacciones', [
             'certificado_conformidad_imagen',
             'certificado_conformidad_imagen_base64',
@@ -50,6 +68,25 @@ class RefaccionController extends Controller
     {
         $this->authorizeOrderArea($request, $refaccione);
         $data = $this->validatePayload($request, true);
+        $this->authorizeOperationalPayload($request, $data, [
+            'orden_id',
+            'item',
+            'solicitante_fecha',
+            'solicitante_nombre',
+            'nombre',
+            'descripcion',
+            'cantidad',
+            'numero_parte',
+            'status',
+            'certificado_conformidad',
+            'certificado_conformidad_imagen',
+            'certificado_conformidad_imagen_base64',
+            'certificado_conformidad_foto',
+            'certificado_conformidad_imagen_file',
+            'area_procedencia',
+            'recibe_fecha',
+            'recibe_nombre',
+        ]);
         $this->storeIncomingImage($request, $data, 'certificado_conformidad_imagen', 'refacciones', [
             'certificado_conformidad_imagen',
             'certificado_conformidad_imagen_base64',
@@ -74,6 +111,7 @@ class RefaccionController extends Controller
     public function destroy(Refaccion $refaccione)
     {
         $this->authorizeOrderArea(request(), $refaccione);
+        $this->authorizeTecnicoOnly(request());
         $this->deleteStoredImage($refaccione->certificado_conformidad_imagen);
         $refaccione->delete();
 

@@ -99,7 +99,7 @@ class OrdenApiTest extends TestCase
             ],
         ])->assertCreated();
 
-        $response = $this->getJson('/api/v1/ordenes');
+        $response = $this->getJson('/api/v1/ordenes?include_counts=1');
 
         $response
             ->assertOk()
@@ -116,11 +116,26 @@ class OrdenApiTest extends TestCase
     {
         $this->seed();
 
-        $area = Area::where('codigo', 'AVCS')->firstOrFail();
-        $tipo = TipoOrden::where('codigo', 'AVCS')->firstOrFail();
-        $user = User::firstOrFail();
+        $area = Area::create([
+            'nombre' => 'QA Dashboard',
+            'codigo' => 'QADM',
+            'numero' => '99',
+        ]);
+        $tipo = TipoOrden::create([
+            'nombre' => 'QA Dashboard',
+            'codigo' => 'QADM',
+        ]);
+        $user = User::create([
+            'name' => 'Tecnico QA',
+            'email' => 'qa-dashboard@redaviation.com',
+            'password' => 'secret123',
+            'area_id' => $area->id,
+            'rol' => 'tecnico',
+        ]);
 
-        $this->postJson('/api/v1/ordenes', [
+        $this->authenticateAsUser($user);
+
+        $ordenResponse = $this->postJson('/api/v1/ordenes', [
             'area_id' => $area->id,
             'tipo_id' => $tipo->id,
             'user_id' => $user->id,
@@ -133,38 +148,18 @@ class OrdenApiTest extends TestCase
                 [
                     'item' => '01',
                     'descripcion' => 'Discrepancia con mano de obra',
+                    'accion_correctiva' => 'Correccion documentada',
+                    'status' => 'resuelta',
                     'horas_hombre' => 3.5,
-                ],
-            ],
-            'refacciones' => [
-                [
-                    'item' => '01',
-                    'nombre' => 'Arnes',
-                    'cantidad' => 2,
-                    'solicitante_fecha' => now()->toDateString(),
-                    'area_procedencia' => 'ALM',
-                    'recibe_fecha' => now()->toDateString(),
-                    'costo_total' => 1250,
-                    'precio_venta' => 1600,
-                ],
-            ],
-            'consumibles' => [
-                [
-                    'item' => '01',
-                    'nombre' => 'Termofit',
-                    'cantidad' => 1,
-                    'solicitante_fecha' => now()->toDateString(),
-                    'area_procedencia' => 'ALM',
-                    'recibe_fecha' => now()->toDateString(),
-                    'costo_total' => 300,
-                    'precio_venta' => 450,
                 ],
             ],
             'talleres_externos' => [
                 [
                     'item' => '01',
                     'proveedor' => 'Proveedor QA',
+                    'foto_path' => 'talleres-externos/evidencia.jpg',
                     'recepcion' => now()->toDateString(),
+                    'trabajo_realizado' => 'Revision externa documentada',
                     'costo' => 500,
                     'precio_venta' => 700,
                 ],
@@ -179,6 +174,52 @@ class OrdenApiTest extends TestCase
                 ],
             ],
         ])->assertCreated();
+
+        $ordenId = $ordenResponse->json('data.id');
+
+        $refaccionId = $this->postJson('/api/v1/refacciones', [
+            'orden_id' => $ordenId,
+            'item' => '01',
+            'nombre' => 'Arnes',
+            'descripcion' => 'Arnes principal de prueba',
+            'cantidad' => 2,
+            'solicitante_fecha' => now()->toDateString(),
+            'area_procedencia' => 'ALM',
+            'recibe_fecha' => now()->toDateString(),
+        ])->assertCreated()->json('data.id');
+
+        $consumibleId = $this->postJson('/api/v1/consumibles', [
+            'orden_id' => $ordenId,
+            'item' => '01',
+            'nombre' => 'Termofit',
+            'descripcion' => 'Consumible de prueba',
+            'cantidad' => 1,
+            'solicitante_fecha' => now()->toDateString(),
+            'area_procedencia' => 'ALM',
+            'recibe_fecha' => now()->toDateString(),
+        ])->assertCreated()->json('data.id');
+
+        $this->authenticateAsUser('administracion@redaviation.com');
+
+        $this->putJson('/api/v1/refacciones/' . $refaccionId, [
+            'costo_total' => 1250,
+        ])->assertOk();
+
+        $this->putJson('/api/v1/consumibles/' . $consumibleId, [
+            'costo_total' => 300,
+        ])->assertOk();
+
+        $this->authenticateAsUser('administradoror@redaviation.com');
+
+        $this->putJson('/api/v1/refacciones/' . $refaccionId, [
+            'precio_venta' => 1600,
+        ])->assertOk();
+
+        $this->putJson('/api/v1/consumibles/' . $consumibleId, [
+            'precio_venta' => 450,
+        ])->assertOk();
+
+        $this->authenticateAsUser($user);
 
         $response = $this->getJson('/api/v1/admin/dashboard/resumen');
 
@@ -201,7 +242,7 @@ class OrdenApiTest extends TestCase
             ->assertJsonPath('data.proveedores', 1)
             ->assertJsonPath('data.top_cliente', 'Cliente Resumen')
             ->assertJsonPath('data.top_matricula', 'XA-ADM')
-            ->assertJsonPath('data.top_area', 'AVCS');
+            ->assertJsonPath('data.top_area', 'QADM');
     }
 
     public function test_it_creates_an_order_linked_to_a_motor(): void

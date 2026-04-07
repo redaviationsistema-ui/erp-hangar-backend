@@ -41,16 +41,18 @@ class AuthController extends Controller
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        AuditLogger::log('login', "Inicio de sesion del usuario {$user->email}.", [
-            'user_id' => $user->id,
-            'entity_type' => 'session',
-            'entity_id' => $user->id,
-            'entity_label' => $user->email,
-            'context' => [
-                'area_id' => $user->area_id,
-                'rol' => $user->rol,
-            ],
-        ]);
+        app()->terminating(function () use ($user) {
+            AuditLogger::log('login', "Inicio de sesion del usuario {$user->email}.", [
+                'user_id' => $user->id,
+                'entity_type' => 'session',
+                'entity_id' => $user->id,
+                'entity_label' => $user->email,
+                'context' => [
+                    'area_id' => $user->area_id,
+                    'rol' => $user->rol,
+                ],
+            ]);
+        });
 
         return response()->json([
             'success' => true,
@@ -84,14 +86,18 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        AuditLogger::log('logout', 'Cierre de sesion del usuario autenticado.', [
-            'user_id' => $request->user()?->id,
-            'entity_type' => 'session',
-            'entity_id' => $request->user()?->id,
-            'entity_label' => $request->user()?->email,
-        ]);
+        $user = $request->user();
 
-        $request->user()->currentAccessToken()?->delete();
+        app()->terminating(function () use ($user) {
+            AuditLogger::log('logout', 'Cierre de sesion del usuario autenticado.', [
+                'user_id' => $user?->id,
+                'entity_type' => 'session',
+                'entity_id' => $user?->id,
+                'entity_label' => $user?->email,
+            ]);
+        });
+
+        $user?->currentAccessToken()?->delete();
 
         return response()->json([
             'success' => true,

@@ -23,6 +23,8 @@ use Throwable;
 
 class AuditLogger
 {
+    private static ?bool $auditTableAvailable = null;
+
     public static function log(string $action, string $description, array $payload = []): ?AuditLog
     {
         if (! self::auditTableReady()) {
@@ -273,10 +275,14 @@ class AuditLogger
 
     private static function auditTableReady(): bool
     {
+        if (self::$auditTableAvailable !== null) {
+            return self::$auditTableAvailable;
+        }
+
         try {
-            return Schema::hasTable('audit_logs');
+            return self::$auditTableAvailable = Schema::hasTable('audit_logs');
         } catch (Throwable) {
-            return false;
+            return self::$auditTableAvailable = false;
         }
     }
 }

@@ -52,6 +52,7 @@ class DiscrepanciaController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeTecnicoOnly($request);
         $data = $this->validatePayload($request, false);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'discrepancias', [
             'foto',
@@ -87,6 +88,7 @@ class DiscrepanciaController extends Controller
     public function update(Request $request, Discrepancia $discrepancia)
     {
         $this->authorizeOrderArea($request, $discrepancia);
+        $this->authorizeTecnicoOnly($request);
         $data = $this->validatePayload($request, true);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'discrepancias', [
             'foto',
@@ -116,6 +118,7 @@ class DiscrepanciaController extends Controller
     public function destroy(Discrepancia $discrepancia)
     {
         $this->authorizeOrderArea(request(), $discrepancia);
+        $this->authorizeTecnicoOnly(request());
         $this->deleteStoredImage($discrepancia->imagen_path);
         $discrepancia->delete();
         $this->bustCache();

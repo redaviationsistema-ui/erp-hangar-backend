@@ -18,6 +18,11 @@ return new class extends Migration
             return;
         }
 
+        if ($driver === 'sqlite') {
+            // SQLite stores enum columns as TEXT and cannot MODIFY them in-place.
+            return;
+        }
+
         DB::statement("ALTER TABLE users MODIFY rol ENUM('admin', 'tecnico', 'supervisor', 'administracion') DEFAULT 'tecnico'");
     }
 
@@ -32,6 +37,11 @@ return new class extends Migration
             DB::statement("ALTER TABLE users ADD CONSTRAINT users_rol_check CHECK (rol IN ('admin', 'tecnico', 'supervisor'))");
             DB::statement("ALTER TABLE users ALTER COLUMN rol SET DEFAULT 'tecnico'");
 
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            // SQLite stores enum columns as TEXT and cannot MODIFY them in-place.
             return;
         }
 

@@ -25,7 +25,7 @@ class OrdenController extends Controller
 
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addMinutes(5), function () use ($request) {
+        $payload = Cache::rememberForever($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), function () use ($request) {
             $fastMode = ! $request->has('fast') || $request->boolean('fast');
             $includeAta = $request->boolean('include_ata');
             $includeCounts = $request->boolean('include_counts');
@@ -112,9 +112,75 @@ class OrdenController extends Controller
 
     public function store(StoreOrdenRequest $request)
     {
+        $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
+            'area_id',
+            'ata_task_template_id',
+            'titulo',
+            'descripcion',
+            'orden',
+            'tipo',
+            'prioridad',
+            'tiempo_estimado_min',
+            'estado',
+            'tecnico',
+            'foto_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('discrepancias', []), [
+            'item',
+            'descripcion',
+            'accion_correctiva',
+            'status',
+            'inspector',
+            'fecha_inicio',
+            'fecha_termino',
+            'horas_hombre',
+            'imagen_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'componente_numero_parte_off',
+            'componente_numero_serie_off',
+            'componente_numero_parte_on',
+            'componente_numero_serie_on',
+            'observaciones',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('talleres_externos', []), [
+            'item',
+            'proveedor',
+            'tarea',
+            'cantidad',
+            'sub_componente',
+            'numero_parte',
+            'numero_serie',
+            'foto_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'observaciones',
+            'certificado',
+            'envio_a',
+            'recepcion',
+            'trabajo_realizado',
+        ]);
         $this->authorizeNestedInventoryPricing($request, $request->validated('refacciones', []));
         $this->authorizeNestedInventoryPricing($request, $request->validated('consumibles', []));
         $this->authorizeNestedInventoryPricing($request, $request->validated('herramientas', []));
+        $this->authorizeNestedInventoryPricing($request, $request->validated('talleres_externos', []));
 
         $orden = DB::transaction(function () use ($request) {
             $data = $request->validated();
@@ -171,9 +237,75 @@ class OrdenController extends Controller
     public function update(UpdateOrdenRequest $request, Orden $ordene)
     {
         $this->authorizeModelArea($request, $ordene);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
+            'area_id',
+            'ata_task_template_id',
+            'titulo',
+            'descripcion',
+            'orden',
+            'tipo',
+            'prioridad',
+            'tiempo_estimado_min',
+            'estado',
+            'tecnico',
+            'foto_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('discrepancias', []), [
+            'item',
+            'descripcion',
+            'accion_correctiva',
+            'status',
+            'inspector',
+            'fecha_inicio',
+            'fecha_termino',
+            'horas_hombre',
+            'imagen_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'componente_numero_parte_off',
+            'componente_numero_serie_off',
+            'componente_numero_parte_on',
+            'componente_numero_serie_on',
+            'observaciones',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('talleres_externos', []), [
+            'item',
+            'proveedor',
+            'tarea',
+            'cantidad',
+            'sub_componente',
+            'numero_parte',
+            'numero_serie',
+            'foto_path',
+            'foto',
+            'imagen',
+            'image',
+            'evidencia',
+            'foto_base64',
+            'imagen_base64',
+            'evidencia_base64',
+            'observaciones',
+            'certificado',
+            'envio_a',
+            'recepcion',
+            'trabajo_realizado',
+        ]);
         $this->authorizeNestedInventoryPricing($request, $request->validated('refacciones', []));
         $this->authorizeNestedInventoryPricing($request, $request->validated('consumibles', []));
         $this->authorizeNestedInventoryPricing($request, $request->validated('herramientas', []));
+        $this->authorizeNestedInventoryPricing($request, $request->validated('talleres_externos', []));
 
         $orden = DB::transaction(function () use ($request, $ordene) {
             $data = $request->validated();
@@ -626,7 +758,9 @@ class OrdenController extends Controller
 
     private function dateToString(mixed $value): ?string
     {
-        return method_exists($value, 'toDateString') ? $value->toDateString() : null;
+        return is_object($value) && method_exists($value, 'toDateString')
+            ? $value->toDateString()
+            : null;
     }
 
     private function traceabilityOrderSummary(Orden $orden): array

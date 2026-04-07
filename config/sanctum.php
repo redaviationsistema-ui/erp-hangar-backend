@@ -50,6 +50,19 @@ return [
     'expiration' => null,
 
     /*
+    |----------------------------------------------------------------------
+    | Track Token Last Used Timestamp
+    |----------------------------------------------------------------------
+    |
+    | Updating "last_used_at" on every authenticated request adds an extra
+    | write to the database. Disable it by default to keep API reads fast,
+    | especially when the database is remote.
+    |
+    */
+
+    'last_used_at' => env('SANCTUM_TRACK_LAST_USED_AT', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------

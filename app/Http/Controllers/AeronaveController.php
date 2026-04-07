@@ -10,7 +10,7 @@ class AeronaveController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', $request->query()), now()->addMinutes(5), function () use ($request) {
+        $payload = Cache::rememberForever($this->cacheKey('index', $request->query()), function () use ($request) {
             $aeronaves = Aeronave::query()
                 ->select(['id', 'cliente', 'matricula', 'fabricante', 'modelo', 'numero_serie', 'estado'])
                 ->withCount('motores')
@@ -29,7 +29,7 @@ class AeronaveController extends Controller
 
     public function show(Aeronave $aeronave)
     {
-        $payload = Cache::remember($this->cacheKey('show', ['id' => $aeronave->id]), now()->addMinutes(5), function () use ($aeronave) {
+        $payload = Cache::rememberForever($this->cacheKey('show', ['id' => $aeronave->id]), function () use ($aeronave) {
             $aeronave->load([
                 'motores' => fn ($query) => $query
                     ->select([
