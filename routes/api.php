@@ -7,6 +7,7 @@ use App\Http\Controllers\AeronaveController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\OrdenController;
 use App\Http\Controllers\RefaccionController;
 use App\Http\Controllers\TallerExternoController;
 use App\Http\Controllers\TareaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -30,6 +32,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/admin/dashboard/resumen', [AdminDashboardController::class, 'resumen']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::apiResource('usuarios', UsuarioController::class)->parameters([
+            'usuarios' => 'usuario',
+        ]);
+        Route::apiResource('clientes', ClienteController::class)->parameters([
+            'clientes' => 'cliente',
+        ]);
         Route::apiResource('areas', AreaController::class);
         Route::apiResource('aeronaves', AeronaveController::class)->parameters([
             'aeronaves' => 'aeronave',

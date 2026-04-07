@@ -25,6 +25,11 @@ class AuthController extends Controller
                 'users.password',
                 'users.area_id',
                 'users.rol',
+                'users.rol_nombre',
+                'users.telefono',
+                'users.puesto',
+                'users.estado',
+                'users.permisos',
                 'area.codigo as area_codigo',
                 'area.numero as area_numero',
                 'area.nombre as area_nombre',
@@ -71,6 +76,11 @@ class AuthController extends Controller
                 'users.email',
                 'users.area_id',
                 'users.rol',
+                'users.rol_nombre',
+                'users.telefono',
+                'users.puesto',
+                'users.estado',
+                'users.permisos',
                 'area.codigo as area_codigo',
                 'area.numero as area_numero',
                 'area.nombre as area_nombre',
@@ -110,8 +120,14 @@ class AuthController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'nombre' => $user->name,
             'email' => $user->email,
             'rol' => $user->rol,
+            'rol_nombre' => $user->rol_nombre ?: $user->rol,
+            'telefono' => $user->telefono,
+            'puesto' => $user->puesto,
+            'estado' => $user->estado ?: 'Activo',
+            'permisos' => $this->normalizePermissions($user->permisos ?? []),
             'area_id' => $user->area_id ?? 0,
             'area' => $user->area_id ? [
                 'id' => $user->area_id,
@@ -125,5 +141,22 @@ class AuthController extends Controller
                 'nombre' => 'GENERAL',
             ],
         ];
+    }
+
+    private function normalizePermissions(mixed $permissions): array
+    {
+        if (is_string($permissions)) {
+            $decoded = json_decode($permissions, true);
+            $permissions = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($permissions)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn ($permission) => trim((string) $permission),
+            $permissions
+        )));
     }
 }

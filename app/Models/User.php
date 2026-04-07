@@ -20,6 +20,11 @@ class User extends Authenticatable
         'password',
         'area_id',
         'rol',
+        'rol_nombre',
+        'telefono',
+        'puesto',
+        'estado',
+        'permisos',
     ];
 
     protected $hidden = [
@@ -32,6 +37,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'permisos' => 'array',
         ];
     }
 

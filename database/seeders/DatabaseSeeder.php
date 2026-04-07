@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             MotorSeeder::class,
             ManualSeeder::class,
             UserSeeder::class,
+            ClienteSeeder::class,
             OrdenSeeder::class,
         ]);
     }
