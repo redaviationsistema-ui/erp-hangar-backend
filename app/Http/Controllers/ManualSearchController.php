@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Discrepancia;
 use App\Services\ManualSearchService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ManualSearchController extends Controller
 {
@@ -23,10 +24,16 @@ class ManualSearchController extends Controller
             'limit' => 'sometimes|nullable|integer|min:1|max:25',
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => $service->search($data, $data['query'], $data['limit'] ?? 10),
-        ]);
+        $payload = Cache::remember(
+            $this->cacheKey('search', $data),
+            now()->addMinutes(10),
+            fn () => [
+                'success' => true,
+                'data' => $service->search($data, $data['query'], $data['limit'] ?? 10),
+            ]
+        );
+
+        return response()->json($payload);
     }
 
     public function discrepancy(Discrepancia $discrepancia, ManualSearchService $service)
@@ -47,9 +54,17 @@ class ManualSearchController extends Controller
             $filters['ata_chapter_id'] = $orden->ata_chapter_id;
         }
 
-        $payload = $service->contextualizeDiscrepancy(
-            $discrepancia->descripcion,
-            $filters
+        $payload = Cache::remember(
+            $this->cacheKey('discrepancy', [
+                'discrepancia_id' => $discrepancia->id,
+                'descripcion' => $discrepancia->descripcion,
+                ...$filters,
+            ]),
+            now()->addMinutes(10),
+            fn () => $service->contextualizeDiscrepancy(
+                $discrepancia->descripcion,
+                $filters
+            )
         );
 
         return response()->json([
@@ -64,5 +79,12 @@ class ManualSearchController extends Controller
                 ] : null,
             ]),
         ]);
+    }
+
+    private function cacheKey(string $action, array $params = []): string
+    {
+        ksort($params);
+
+        return 'manual_search:' . $action . ':' . md5(json_encode($params));
     }
 }

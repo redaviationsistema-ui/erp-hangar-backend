@@ -56,7 +56,7 @@ class AtaController extends Controller
 
             return [
                 'success' => true,
-                'data' => $chapters,
+                'data' => $chapters->map(fn (AtaChapter $chapter) => $chapter->toArray())->values()->all(),
             ];
         });
 
@@ -104,7 +104,7 @@ class AtaController extends Controller
 
             return [
                 'success' => true,
-                'data' => $subchapters,
+                'data' => $subchapters->map(fn (AtaSubchapter $subchapter) => $subchapter->toArray())->values()->all(),
             ];
         });
 
@@ -139,7 +139,7 @@ class AtaController extends Controller
 
             return [
                 'success' => true,
-                'data' => $subchapter,
+                'data' => $subchapter->toArray(),
             ];
         });
 

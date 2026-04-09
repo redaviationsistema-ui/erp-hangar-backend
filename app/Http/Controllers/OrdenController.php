@@ -205,8 +205,10 @@ class OrdenController extends Controller
 
             $this->syncRelatedCollections($orden, $data, (bool) ($data['generar_tareas_ata'] ?? true));
 
-            return $orden->load($this->detailRelations());
+            return $orden;
         });
+
+        $orden->load($this->saveResponseRelations())->loadCount($this->saveResponseCountRelations());
 
         $this->bustCache();
 
@@ -323,8 +325,10 @@ class OrdenController extends Controller
             $ordene->update(SchemaPayload::forModel($ordene, Arr::except($data, $this->nestedKeys())));
             $this->syncRelatedCollections($ordene, $data, false);
 
-            return $ordene->load($this->detailRelations());
+            return $ordene;
         });
+
+        $orden->load($this->saveResponseRelations())->loadCount($this->saveResponseCountRelations());
 
         $this->bustCache();
 
@@ -641,6 +645,41 @@ class OrdenController extends Controller
         ];
     }
 
+    private function saveResponseRelations(): array
+    {
+        return [
+            ...$this->showRelations(),
+            'tareas' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'orden_id',
+                    'area_id',
+                    'ata_task_template_id',
+                    'titulo',
+                    'descripcion',
+                    'orden',
+                    'tipo',
+                    'prioridad',
+                    'tiempo_estimado_min',
+                    'estado',
+                    'tecnico',
+                    'foto_path',
+                    'created_at',
+                    'updated_at',
+                ])
+                ->orderBy('orden')
+                ->orderBy('id'),
+            'tareas.plantillaAta:id,ata_subchapter_id,area_id,titulo,descripcion,tipo,tiempo_estimado_min,prioridad',
+            'tareas.area:id,codigo,numero,nombre',
+            'discrepancias',
+            'refacciones',
+            'consumibles',
+            'herramientas',
+            'ndt',
+            'talleresExternos',
+        ];
+    }
+
     private function countRelations(): array
     {
         return [
@@ -652,6 +691,19 @@ class OrdenController extends Controller
             'ndt',
             'talleresExternos',
             'mediciones',
+        ];
+    }
+
+    private function saveResponseCountRelations(): array
+    {
+        return [
+            'tareas',
+            'discrepancias',
+            'refacciones',
+            'consumibles',
+            'herramientas',
+            'ndt',
+            'talleresExternos',
         ];
     }
 

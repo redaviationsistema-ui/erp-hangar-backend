@@ -6,6 +6,7 @@ use App\Http\Resources\ClienteResource;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class ClienteController extends Controller
 {
@@ -13,29 +14,37 @@ class ClienteController extends Controller
     {
         $this->authorizeManagement($request);
 
-        $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
-        $search = trim((string) $request->input('search', ''));
+        $payload = Cache::remember(
+            $this->cacheKey('index', $request->query()),
+            now()->addMinutes(5),
+            function () use ($request) {
+                $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
+                $search = trim((string) $request->input('search', ''));
 
-        $query = Cliente::query()->orderBy('nombre_comercial');
+                $query = Cliente::query()->orderBy('nombre_comercial');
 
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder
-                    ->where('nombre_comercial', 'like', "%{$search}%")
-                    ->orWhere('razon_social', 'like', "%{$search}%")
-                    ->orWhere('rfc', 'like', "%{$search}%")
-                    ->orWhere('contacto_nombre', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+                if ($search !== '') {
+                    $query->where(function ($builder) use ($search) {
+                        $builder
+                            ->where('nombre_comercial', 'like', "%{$search}%")
+                            ->orWhere('razon_social', 'like', "%{$search}%")
+                            ->orWhere('rfc', 'like', "%{$search}%")
+                            ->orWhere('contacto_nombre', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+                }
 
-        $clientes = $query->paginate($perPage);
+                $clientes = $query->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => ClienteResource::collection($clientes->getCollection())->resolve(),
-            'meta' => $this->meta($clientes),
-        ]);
+                return [
+                    'success' => true,
+                    'data' => ClienteResource::collection($clientes->getCollection())->resolve(),
+                    'meta' => $this->meta($clientes),
+                ];
+            }
+        );
+
+        return response()->json($payload);
     }
 
     public function store(Request $request)
@@ -59,6 +68,8 @@ class ClienteController extends Controller
             'estatus' => $data['estatus'] ?? 'Activo',
         ]);
 
+        $this->bustCache();
+
         return response()->json([
             'success' => true,
             'message' => 'Cliente creado correctamente.',
@@ -70,10 +81,16 @@ class ClienteController extends Controller
     {
         $this->authorizeManagement($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => (new ClienteResource($cliente))->resolve(),
-        ]);
+        $payload = Cache::remember(
+            $this->cacheKey('show', ['id' => $cliente->id]),
+            now()->addMinutes(5),
+            fn () => [
+                'success' => true,
+                'data' => (new ClienteResource($cliente))->resolve(),
+            ]
+        );
+
+        return response()->json($payload);
     }
 
     public function update(Request $request, Cliente $cliente)
@@ -93,6 +110,7 @@ class ClienteController extends Controller
         ]);
 
         $cliente->update($data);
+        $this->bustCache();
 
         return response()->json([
             'success' => true,
@@ -106,6 +124,7 @@ class ClienteController extends Controller
         $this->authorizeManagement($request);
 
         $cliente->delete();
+        $this->bustCache();
 
         return response()->json([
             'success' => true,
@@ -155,5 +174,17 @@ class ClienteController extends Controller
             'per_page' => $paginator->perPage(),
             'has_more_pages' => $paginator->hasMorePages(),
         ];
+    }
+
+    private function cacheKey(string $action, array $params = []): string
+    {
+        ksort($params);
+
+        return 'clientes:' . Cache::get('clientes_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+    }
+
+    private function bustCache(): void
+    {
+        Cache::forever('clientes_cache_version', (int) Cache::get('clientes_cache_version', 1) + 1);
     }
 }

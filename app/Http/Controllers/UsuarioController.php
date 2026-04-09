@@ -7,6 +7,7 @@ use App\Models\Area;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class UsuarioController extends Controller
 {
@@ -14,35 +15,43 @@ class UsuarioController extends Controller
     {
         $this->authorizeManagement($request, 'usuarios');
 
-        $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
-        $search = trim((string) $request->input('search', ''));
+        $payload = Cache::remember(
+            $this->cacheKey('index', $request->query()),
+            now()->addMinutes(5),
+            function () use ($request) {
+                $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
+                $search = trim((string) $request->input('search', ''));
 
-        $query = User::query()
-            ->with('area:id,codigo,nombre')
-            ->orderBy('name');
+                $query = User::query()
+                    ->with('area:id,codigo,nombre')
+                    ->orderBy('name');
 
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('rol', 'like', "%{$search}%")
-                    ->orWhere('rol_nombre', 'like', "%{$search}%")
-                    ->orWhereHas('area', function ($areaQuery) use ($search) {
-                        $areaQuery
-                            ->where('codigo', 'like', "%{$search}%")
-                            ->orWhere('nombre', 'like', "%{$search}%");
+                if ($search !== '') {
+                    $query->where(function ($builder) use ($search) {
+                        $builder
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('rol', 'like', "%{$search}%")
+                            ->orWhere('rol_nombre', 'like', "%{$search}%")
+                            ->orWhereHas('area', function ($areaQuery) use ($search) {
+                                $areaQuery
+                                    ->where('codigo', 'like', "%{$search}%")
+                                    ->orWhere('nombre', 'like', "%{$search}%");
+                            });
                     });
-            });
-        }
+                }
 
-        $usuarios = $query->paginate($perPage);
+                $usuarios = $query->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => UsuarioResource::collection($usuarios->getCollection())->resolve(),
-            'meta' => $this->meta($usuarios),
-        ]);
+                return [
+                    'success' => true,
+                    'data' => UsuarioResource::collection($usuarios->getCollection())->resolve(),
+                    'meta' => $this->meta($usuarios),
+                ];
+            }
+        );
+
+        return response()->json($payload);
     }
 
     public function store(Request $request)
@@ -77,6 +86,8 @@ class UsuarioController extends Controller
             'permisos' => $this->normalizePermissions($data['permisos'] ?? []),
         ])->load('area:id,codigo,nombre');
 
+        $this->bustCache();
+
         return response()->json([
             'success' => true,
             'message' => 'Usuario creado correctamente.',
@@ -88,12 +99,20 @@ class UsuarioController extends Controller
     {
         $this->authorizeManagement($request, 'usuarios');
 
-        $usuario->load('area:id,codigo,nombre');
+        $payload = Cache::remember(
+            $this->cacheKey('show', ['id' => $usuario->id]),
+            now()->addMinutes(5),
+            function () use ($usuario) {
+                $usuario->load('area:id,codigo,nombre');
 
-        return response()->json([
-            'success' => true,
-            'data' => (new UsuarioResource($usuario))->resolve(),
-        ]);
+                return [
+                    'success' => true,
+                    'data' => (new UsuarioResource($usuario))->resolve(),
+                ];
+            }
+        );
+
+        return response()->json($payload);
     }
 
     public function update(Request $request, User $usuario)
@@ -145,6 +164,7 @@ class UsuarioController extends Controller
 
         $usuario->update($payload);
         $usuario->load('area:id,codigo,nombre');
+        $this->bustCache();
 
         return response()->json([
             'success' => true,
@@ -158,6 +178,7 @@ class UsuarioController extends Controller
         $this->authorizeManagement($request, 'usuarios');
 
         $usuario->delete();
+        $this->bustCache();
 
         return response()->json([
             'success' => true,
@@ -237,5 +258,17 @@ class UsuarioController extends Controller
             'per_page' => $paginator->perPage(),
             'has_more_pages' => $paginator->hasMorePages(),
         ];
+    }
+
+    private function cacheKey(string $action, array $params = []): string
+    {
+        ksort($params);
+
+        return 'usuarios:' . Cache::get('usuarios_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+    }
+
+    private function bustCache(): void
+    {
+        Cache::forever('usuarios_cache_version', (int) Cache::get('usuarios_cache_version', 1) + 1);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\AtaChapter;
 use App\Models\Manual;
 use App\Models\ManualChunk;
@@ -10,6 +11,10 @@ use Throwable;
 
 class ManualSearchService
 {
+    private const CANDIDATE_POOL_FACTOR = 20;
+    private const MIN_CANDIDATE_POOL = 120;
+    private const MAX_PREFILTER_KEYWORDS = 5;
+
     private const STOP_WORDS = [
         'de', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'con', 'sin',
         'por', 'para', 'del', 'al', 'en', 'se', 'que', 'es', 'son', 'lo', 'le', 'izquierdo',
@@ -53,13 +58,22 @@ class ManualSearchService
 
     private function performSearch(array $filters, array $keywords, array $ataIds, int $limit)
     {
-        return $this->baseQuery($filters, $ataIds)
+        $candidateIds = $this->candidateIds($filters, $keywords, $ataIds, $limit);
+
+        if ($candidateIds === []) {
+            return collect();
+        }
+
+        return ManualChunk::query()
+            ->whereIn('id', $candidateIds)
             ->with([
                 'manual:id,aeronave_id,nombre,tipo_manual,aeronave_modelo,revision,estado',
                 'ataChapter:id,codigo,descripcion',
                 'ataSubchapter:id,ata_chapter_id,codigo,descripcion',
                 'referencias:id,manual_chunk_id,tipo,valor',
             ])
+            ->orderBy('manual_id')
+            ->orderBy('orden')
             ->get()
             ->map(fn (ManualChunk $chunk) => [
                 'chunk' => $chunk,
@@ -67,8 +81,25 @@ class ManualSearchService
             ])
             ->filter(fn (array $item) => $item['score'] > 0 || empty($keywords))
             ->sortByDesc('score')
-            ->take($limit)
-            ->values();
+                ->take($limit)
+                ->values();
+    }
+
+    private function candidateIds(array $filters, array $keywords, array $ataIds, int $limit): array
+    {
+        $query = $this->baseQuery($filters, $ataIds)->select('id');
+        $prefilterKeywords = array_slice($keywords, 0, self::MAX_PREFILTER_KEYWORDS);
+
+        if ($prefilterKeywords !== []) {
+            $this->applyKeywordPrefilter($query, $prefilterKeywords);
+        }
+
+        return $query
+            ->orderBy('manual_id')
+            ->orderBy('orden')
+            ->limit(max($limit * self::CANDIDATE_POOL_FACTOR, self::MIN_CANDIDATE_POOL))
+            ->pluck('id')
+            ->all();
     }
 
     public function contextualizeDiscrepancy(string $descripcion, array $filters = [], int $limit = 5): array
@@ -129,6 +160,21 @@ class ManualSearchService
                 empty($filters['ata_chapter_id']) && empty($filters['ata_subchapter_id']) && ! empty($ataHints),
                 fn ($q) => $q->whereIn('ata_chapter_id', $ataHints)
             );
+    }
+
+    private function applyKeywordPrefilter(Builder $query, array $keywords): void
+    {
+        $query->where(function (Builder $builder) use ($keywords) {
+            foreach ($keywords as $keyword) {
+                $like = '%' . $keyword . '%';
+
+                $builder
+                    ->orWhere('titulo', 'like', $like)
+                    ->orWhere('resumen', 'like', $like)
+                    ->orWhere('texto', 'like', $like)
+                    ->orWhereJsonContains('keywords', $keyword);
+            }
+        });
     }
 
     private function ensureChunksAvailable(array $filters): array
