@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ClientePortalController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
@@ -30,6 +31,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/user', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/cliente/dashboard', [ClientePortalController::class, 'dashboard']);
+        Route::post('/cliente/selecciones-pago', [ClientePortalController::class, 'selectPaymentMethod']);
+        Route::post('/cliente/incidencias', [ClientePortalController::class, 'reportIncident']);
         Route::get('/admin/dashboard/resumen', [AdminDashboardController::class, 'resumen']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::apiResource('usuarios', UsuarioController::class)->parameters([

@@ -21,7 +21,9 @@ class ClienteController extends Controller
                 $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
                 $search = trim((string) $request->input('search', ''));
 
-                $query = Cliente::query()->orderBy('nombre_comercial');
+                $query = Cliente::query()
+                    ->withClienteOrders()
+                    ->orderBy('nombre_comercial');
 
                 if ($search !== '') {
                     $query->where(function ($builder) use ($search) {
@@ -58,17 +60,24 @@ class ClienteController extends Controller
             'contacto_nombre' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'password' => 'nullable|string|min:6|max:255',
+            'contrasena' => 'nullable|string|min:6|max:255',
             'telefono' => 'nullable|string|max:50',
             'ciudad' => 'nullable|string|max:255',
             'estatus' => 'nullable|string|max:50',
             'notas' => 'nullable|string',
+            'ot_id' => 'nullable|integer|exists:ordenes,id',
+            'ot_asignada_id' => 'nullable|integer|exists:ordenes,id',
         ]);
 
         $cliente = Cliente::create([
             ...$data,
+            'password' => $data['password'] ?? $data['contrasena'] ?? null,
+            'contrasena_portal' => $data['contrasena'] ?? $data['password'] ?? null,
+            'ot_asignada_id' => $data['ot_asignada_id'] ?? $data['ot_id'] ?? null,
             'estatus' => $data['estatus'] ?? 'Activo',
         ]);
 
+        $cliente->load('otAsignadaOrden.area');
         $this->bustCache();
 
         return response()->json([
@@ -87,7 +96,7 @@ class ClienteController extends Controller
             now()->addMinutes(5),
             fn () => [
                 'success' => true,
-                'data' => (new ClienteResource($cliente))->resolve(),
+                'data' => (new ClienteResource($cliente->load('otAsignadaOrden.area')))->resolve(),
             ]
         );
 
@@ -105,13 +114,29 @@ class ClienteController extends Controller
             'contacto_nombre' => 'sometimes|nullable|string|max:255',
             'email' => 'sometimes|nullable|email|max:255',
             'password' => 'sometimes|nullable|string|min:6|max:255',
+            'contrasena' => 'sometimes|nullable|string|min:6|max:255',
             'telefono' => 'sometimes|nullable|string|max:50',
             'ciudad' => 'sometimes|nullable|string|max:255',
             'estatus' => 'sometimes|nullable|string|max:50',
             'notas' => 'sometimes|nullable|string',
+            'ot_id' => 'sometimes|nullable|integer|exists:ordenes,id',
+            'ot_asignada_id' => 'sometimes|nullable|integer|exists:ordenes,id',
         ]);
 
-        $cliente->update($data);
+        $payload = $data;
+
+        if (array_key_exists('password', $data) || array_key_exists('contrasena', $data)) {
+            $plainPassword = $data['contrasena'] ?? $data['password'] ?? null;
+            $payload['password'] = $plainPassword;
+            $payload['contrasena_portal'] = $plainPassword;
+        }
+
+        if (array_key_exists('ot_asignada_id', $data) || array_key_exists('ot_id', $data)) {
+            $payload['ot_asignada_id'] = $data['ot_asignada_id'] ?? $data['ot_id'] ?? null;
+        }
+
+        $cliente->update($payload);
+        $cliente->load('otAsignadaOrden.area');
         $this->bustCache();
 
         return response()->json([

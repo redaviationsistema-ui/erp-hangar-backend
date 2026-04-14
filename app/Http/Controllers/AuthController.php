@@ -18,6 +18,7 @@ class AuthController extends Controller
         ]);
 
         $cliente = Cliente::query()
+            ->with('otAsignadaOrden.area')
             ->where('email', $credentials['email'])
             ->first();
 
@@ -92,7 +93,9 @@ class AuthController extends Controller
         $actor = $request->user();
 
         if ($actor instanceof Cliente) {
-            $cliente = Cliente::query()->findOrFail($actor->id);
+            $cliente = Cliente::query()
+                ->with('otAsignadaOrden.area')
+                ->findOrFail($actor->id);
 
             return response()->json([
                 'success' => true,
@@ -178,6 +181,12 @@ class AuthController extends Controller
 
     private function serializeCliente(Cliente $cliente): array
     {
+        $otAsignada = $cliente->otAsignadaOrden;
+        $relatedOrders = $cliente->relatedOrdersQuery()
+            ->latest('id')
+            ->limit(10)
+            ->get();
+
         return [
             'id' => $cliente->id,
             'name' => $cliente->contacto_nombre ?: $cliente->nombre_comercial,
@@ -204,6 +213,18 @@ class AuthController extends Controller
                 'contacto_nombre' => $cliente->contacto_nombre,
                 'ciudad' => $cliente->ciudad,
                 'estatus' => $cliente->estatus ?: 'Activo',
+                'ot_asignada_id' => $cliente->ot_asignada_id,
+                'ot_asignada' => $otAsignada?->folio,
+                'contrasena' => $cliente->contrasena_portal,
+                'ordenes_trabajo_count' => $relatedOrders->count(),
+                'ordenes_trabajo' => $relatedOrders->map(fn ($orden) => [
+                    'id' => $orden->id,
+                    'folio' => $orden->folio,
+                    'estado' => $orden->estado,
+                    'descripcion' => $orden->descripcion,
+                    'matricula' => $orden->matricula,
+                    'area_nombre' => $orden->area?->nombre,
+                ])->values(),
             ],
         ];
     }
