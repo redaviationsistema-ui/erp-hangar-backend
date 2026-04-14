@@ -5,34 +5,66 @@ namespace App\Http\Controllers;
 use App\Models\Orden;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AdminDashboardController extends Controller
 {
     public function resumen(Request $request)
     {
-        $ordenes = $this->applyAreaScope(
-            $request,
-            Orden::query()->with([
-                'area:id,codigo,nombre',
-                'discrepancias:id,orden_id,horas_hombre',
-                'refacciones:id,orden_id,cantidad,solicitante_fecha,area_procedencia,recibe_fecha,costo_total,precio_venta',
-                'consumibles:id,orden_id,cantidad,solicitante_fecha,area_procedencia,recibe_fecha,costo_total,precio_venta',
-                'talleresExternos:id,orden_id,proveedor,recepcion,costo,precio_venta',
-                'ndt:id,orden_id,recepcion,costo_total,precio_venta',
-            ])
-        )
-            ->withCount('herramientas')
+        $payload = Cache::rememberForever(
+            $this->cacheKey($request),
+            fn () => $this->buildResumenPayload($request)
+        );
+
+        return response()->json($payload);
+    }
+
+    private function buildResumenPayload(Request $request): array
+    {
+        $ordenes = $this->applyAreaScope($request, Orden::query(), 'ordenes.area_id')
+            ->leftJoin('areas as area', 'area.id', '=', 'ordenes.area_id')
             ->select([
-                'id',
-                'area_id',
-                'folio',
-                'cliente',
-                'matricula',
-                'fecha_inicio',
-                'estado',
-                'created_at',
+                'ordenes.id',
+                'ordenes.area_id',
+                'ordenes.folio',
+                'ordenes.cliente',
+                'ordenes.matricula',
+                'ordenes.fecha_inicio',
+                'ordenes.estado',
+                'ordenes.created_at',
+                DB::raw("COALESCE(NULLIF(TRIM(area.codigo), ''), NULLIF(TRIM(area.nombre), ''), 'Sin area') as area_label"),
             ])
             ->get();
+
+        $ordenIds = $ordenes->pluck('id');
+        $refacciones = $this->aggregateItemsByOrder('refacciones', $ordenIds, true, true, true, true);
+        $consumibles = $this->aggregateItemsByOrder('consumibles', $ordenIds, true, true, true, true);
+        $talleres = $this->aggregateItemsByOrder('taller_externos', $ordenIds, false, false, true, false, 'costo');
+        $ndt = $this->aggregateItemsByOrder('ndt', $ordenIds, false, false, true, false);
+        $discrepancias = $ordenIds->isEmpty()
+            ? collect()
+            : DB::table('discrepancias')
+                ->select('orden_id', DB::raw('COALESCE(SUM(horas_hombre), 0) as horas_hombre_sum'))
+                ->whereIn('orden_id', $ordenIds)
+                ->groupBy('orden_id')
+                ->get()
+                ->keyBy('orden_id');
+        $herramientas = $ordenIds->isEmpty()
+            ? collect()
+            : DB::table('herramientas')
+                ->select('orden_id', DB::raw('COUNT(*) as records_count'))
+                ->whereIn('orden_id', $ordenIds)
+                ->groupBy('orden_id')
+                ->get()
+                ->keyBy('orden_id');
+        $proveedores = $ordenIds->isEmpty()
+            ? 0
+            : (int) DB::table('taller_externos')
+                ->whereIn('orden_id', $ordenIds)
+                ->whereRaw("TRIM(COALESCE(proveedor, '')) <> ''")
+                ->distinct('proveedor')
+                ->count('proveedor');
 
         $now = now();
         $metrics = [
@@ -61,7 +93,6 @@ class AdminDashboardController extends Controller
             'por_cobrar_monto' => 0.0,
             'costo_periodo' => 0.0,
         ];
-        $proveedores = [];
         $porCliente = [];
         $porMatricula = [];
         $porArea = [];
@@ -69,53 +100,53 @@ class AdminDashboardController extends Controller
 
         foreach ($ordenes as $orden) {
             $activa = in_array(strtolower(trim((string) $orden->estado)), ['abierta', 'proceso'], true);
+            $refaccion = $refacciones->get($orden->id);
+            $consumible = $consumibles->get($orden->id);
+            $taller = $talleres->get($orden->id);
+            $ndtItem = $ndt->get($orden->id);
+            $discrepancia = $discrepancias->get($orden->id);
+            $herramienta = $herramientas->get($orden->id);
 
-            $refacciones = $orden->refacciones;
-            $consumibles = $orden->consumibles;
-            $talleres = $orden->talleresExternos;
-            $ndt = $orden->ndt;
+            $refCount = (int) ($refaccion->records_count ?? 0);
+            $consCount = (int) ($consumible->records_count ?? 0);
+            $tallCount = (int) ($taller->records_count ?? 0);
+            $ndtCount = (int) ($ndtItem->records_count ?? 0);
+            $herrCount = (int) ($herramienta->records_count ?? 0);
 
-            $metrics['refacciones_registros'] += $refacciones->count();
-            $metrics['consumibles_registros'] += $consumibles->count();
-            $metrics['talleres_registros'] += $talleres->count();
-            $metrics['ndt_registros'] += $ndt->count();
+            $metrics['refacciones_registros'] += $refCount;
+            $metrics['consumibles_registros'] += $consCount;
+            $metrics['talleres_registros'] += $tallCount;
+            $metrics['ndt_registros'] += $ndtCount;
 
-            $costoRef = $this->sumDecimal($refacciones, 'costo_total');
-            $costoCon = $this->sumDecimal($consumibles, 'costo_total');
-            $costoTall = $this->sumDecimal($talleres, 'costo');
-            $costoNdt = $this->sumDecimal($ndt, 'costo_total');
+            $costoRef = (float) ($refaccion->cost_sum ?? 0);
+            $costoCon = (float) ($consumible->cost_sum ?? 0);
+            $costoTall = (float) ($taller->cost_sum ?? 0);
+            $costoNdt = (float) ($ndtItem->cost_sum ?? 0);
             $costoMiscelanea = 0.0;
-            $ventaOt = $this->sumDecimal($refacciones, 'precio_venta')
-                + $this->sumDecimal($consumibles, 'precio_venta')
-                + $this->sumDecimal($talleres, 'precio_venta')
-                + $this->sumDecimal($ndt, 'precio_venta');
+            $ventaOt = (float) ($refaccion->sale_sum ?? 0)
+                + (float) ($consumible->sale_sum ?? 0)
+                + (float) ($taller->sale_sum ?? 0)
+                + (float) ($ndtItem->sale_sum ?? 0);
             $costoOt = $costoRef + $costoCon + $costoTall + $costoNdt + $costoMiscelanea;
 
-            $metrics['existencias'] += $refacciones->count() + $consumibles->count() + (int) $orden->herramientas_count;
-            $metrics['reservas'] += $activa ? $refacciones->count() + $consumibles->count() : 0;
-            $metrics['entradas'] += $this->countNotEmpty($refacciones, 'recibe_fecha')
-                + $this->countNotEmpty($talleres, 'recepcion')
-                + $this->countNotEmpty($ndt, 'recepcion');
-            $metrics['recepciones'] += $this->countNotEmpty($refacciones, 'recibe_fecha')
-                + $this->countNotEmpty($talleres, 'recepcion')
-                + $this->countNotEmpty($ndt, 'recepcion');
-            $metrics['salidas'] += $this->sumQuantity($refacciones) + $this->sumQuantity($consumibles);
-            $metrics['transferencias'] += $this->countNotEmpty($refacciones, 'area_procedencia')
-                + $this->countNotEmpty($consumibles, 'area_procedencia');
-            $metrics['requisiciones'] += $this->countNotEmpty($refacciones, 'solicitante_fecha')
-                + $this->countNotEmpty($consumibles, 'solicitante_fecha');
-            if ($refacciones->isNotEmpty() || $consumibles->isNotEmpty() || $talleres->isNotEmpty() || $ndt->isNotEmpty()) {
+            $metrics['existencias'] += $refCount + $consCount + $herrCount;
+            $metrics['reservas'] += $activa ? $refCount + $consCount : 0;
+            $metrics['entradas'] += (int) ($refaccion->received_count ?? 0)
+                + (int) ($taller->received_count ?? 0)
+                + (int) ($ndtItem->received_count ?? 0);
+            $metrics['recepciones'] += (int) ($refaccion->received_count ?? 0)
+                + (int) ($taller->received_count ?? 0)
+                + (int) ($ndtItem->received_count ?? 0);
+            $metrics['salidas'] += (int) ($refaccion->quantity_sum ?? 0) + (int) ($consumible->quantity_sum ?? 0);
+            $metrics['transferencias'] += (int) ($refaccion->transfer_count ?? 0)
+                + (int) ($consumible->transfer_count ?? 0);
+            $metrics['requisiciones'] += (int) ($refaccion->request_count ?? 0)
+                + (int) ($consumible->request_count ?? 0);
+            if ($refCount > 0 || $consCount > 0 || $tallCount > 0 || $ndtCount > 0) {
                 $metrics['ot_con_compra']++;
             }
 
-            foreach ($talleres as $taller) {
-                $proveedor = trim((string) $taller->proveedor);
-                if ($proveedor !== '') {
-                    $proveedores[$proveedor] = true;
-                }
-            }
-
-            $metrics['horas_hombre'] += (float) $orden->discrepancias->sum('horas_hombre');
+            $metrics['horas_hombre'] += (float) ($discrepancia->horas_hombre_sum ?? 0);
             $metrics['costo_refacciones'] += $costoRef;
             $metrics['costo_consumibles'] += $costoCon;
             $metrics['costo_talleres'] += $costoTall;
@@ -134,7 +165,7 @@ class AdminDashboardController extends Controller
 
             $cliente = $this->safeText($orden->cliente, 'Sin cliente');
             $matricula = $this->safeText($orden->matricula, 'Sin matricula');
-            $area = $this->safeText($orden->area?->codigo ?? $orden->area?->nombre, 'Sin area');
+            $area = $this->safeText($orden->area_label, 'Sin area');
             $folio = $this->safeText($orden->folio, 'Sin OT');
 
             $porCliente[$cliente] = ($porCliente[$cliente] ?? 0) + $costoOt;
@@ -158,7 +189,7 @@ class AdminDashboardController extends Controller
         [$topArea, $topAreaCosto] = $this->topEntry($porArea);
         [$topOt, $topOtCosto] = $this->topEntry($porOt);
 
-        return response()->json([
+        return [
             'success' => true,
             'message' => 'Resumen administrativo obtenido correctamente.',
             'data' => [
@@ -175,7 +206,7 @@ class AdminDashboardController extends Controller
                 'kardex' => $metrics['entradas'] + $metrics['salidas'] + $metrics['transferencias'],
                 'requisiciones' => $metrics['requisiciones'],
                 'recepciones' => $metrics['recepciones'],
-                'proveedores' => count($proveedores),
+                'proveedores' => $proveedores,
                 'ot_con_compra' => $metrics['ot_con_compra'],
                 'cotizadas' => $metrics['cotizadas'],
                 'en_aprobacion' => $metrics['en_aprobacion'],
@@ -201,7 +232,60 @@ class AdminDashboardController extends Controller
                 'periodo' => $this->periodLabel($now->month, $now->year),
                 'costo_periodo' => round($metrics['costo_periodo'], 2),
             ],
-        ]);
+        ];
+    }
+
+    private function cacheKey(Request $request): string
+    {
+        $context = $this->areaCacheContext($request);
+        ksort($context);
+
+        return 'dashboard_resumen:' . Cache::get('dashboard_cache_version', 1) . ':' . md5(json_encode($context));
+    }
+
+    private function aggregateItemsByOrder(
+        string $table,
+        Collection $orderIds,
+        bool $includeQuantity = false,
+        bool $includeRequests = false,
+        bool $includeReceipts = false,
+        bool $includeTransfers = false,
+        string $costColumn = 'costo_total',
+    ): Collection {
+        if ($orderIds->isEmpty()) {
+            return collect();
+        }
+
+        $select = [
+            'orden_id',
+            DB::raw('COUNT(*) as records_count'),
+            DB::raw('COALESCE(SUM(' . $costColumn . '), 0) as cost_sum'),
+            DB::raw('COALESCE(SUM(precio_venta), 0) as sale_sum'),
+        ];
+
+        if ($includeQuantity) {
+            $select[] = DB::raw("COALESCE(SUM(CASE WHEN COALESCE(cantidad, 0) > 0 THEN ROUND(cantidad) ELSE 1 END), 0) as quantity_sum");
+        }
+
+        if ($includeRequests) {
+            $select[] = DB::raw("COALESCE(SUM(CASE WHEN solicitante_fecha IS NOT NULL THEN 1 ELSE 0 END), 0) as request_count");
+        }
+
+        if ($includeReceipts) {
+            $receiptColumn = $table === 'refacciones' ? 'recibe_fecha' : 'recepcion';
+            $select[] = DB::raw("COALESCE(SUM(CASE WHEN {$receiptColumn} IS NOT NULL THEN 1 ELSE 0 END), 0) as received_count");
+        }
+
+        if ($includeTransfers) {
+            $select[] = DB::raw("COALESCE(SUM(CASE WHEN TRIM(COALESCE(area_procedencia, '')) <> '' THEN 1 ELSE 0 END), 0) as transfer_count");
+        }
+
+        return DB::table($table)
+            ->select($select)
+            ->whereIn('orden_id', $orderIds)
+            ->groupBy('orden_id')
+            ->get()
+            ->keyBy('orden_id');
     }
 
     private function sumDecimal(Collection $items, string $key): float

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Aeronave;
 use App\Models\Area;
 use App\Models\AtaSubchapter;
 use App\Models\Manual;
@@ -12,6 +13,7 @@ use App\Models\TipoOrden;
 use App\Models\User;
 use App\Services\OrdenService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 
 class OrdenSeeder extends Seeder
 {
@@ -23,6 +25,7 @@ class OrdenSeeder extends Seeder
         $this->seedHangarMotorExample($user);
         $this->seedRequestedExamples($user);
         $this->seedSharedExcelExamples($user);
+        $this->bustListingCaches();
     }
 
     private function seedManualRecords(): void
@@ -68,6 +71,134 @@ class OrdenSeeder extends Seeder
                 'estado' => 'vigente',
                 'descripcion' => 'Registro documental sembrado para base de datos.',
             ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-AVCS26-043 - XA-MMN - Atención a reporte.xlsx',
+                'nombre' => 'CESA-AVCS26-043 - XA-MMN - Atención a reporte',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-AVCS26-048 - XA-VGZ - INSPECCION FUEL PUMP.xlsx',
+                'nombre' => 'CESA-AVCS26-048 - XA-VGZ - INSPECCION FUEL PUMP',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-BATT26-001 - XA-VEE - TOPPING BATERIA.xlsx',
+                'nombre' => 'CESA-BATT26-001 - XA-VEE - TOPPING BATERIA',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-ESTR26-004 - XA-TZA - REPARACION DE FAIRING RH ASSY.xlsx',
+                'nombre' => 'CESA-ESTR26-004 - XA-TZA - REPARACION DE FAIRING RH ASSY',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-FREN26-001 - INSPECCION DE CONDICIÓN A BRAKE ASSY (1).xlsx',
+                'nombre' => 'CESA-FREN26-001 - INSPECCION DE CONDICIÓN A BRAKE ASSY (1)',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-HANG26-014 - XA-MMN - ATENCIÓN A REPORTE LUZ SPOILER.xlsx',
+                'nombre' => 'CESA-HANG26-014 - XA-MMN - ATENCION A REPORTE LUZ SPOILER',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-HELI25-002 - INSPECCIÓN VISUAL A TANQUE AUXILIAR DE COMBUSTIBLE - 94373007.xlsx',
+                'nombre' => 'CESA-HELI25-002 - INSPECCION VISUAL A TANQUE AUXILIAR DE COMBUSTIBLE - 94373007',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-PROP25-001 - INSPECCION A PROPELLER LH.xlsx',
+                'nombre' => 'CESA-PROP25-001 - INSPECCION A PROPELLER LH',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-SALV26-001 - XA-JUL - INVENTARIO DE COMPONENTES.xlsx',
+                'nombre' => 'CESA-SALV26-001 - XA-JUL - INVENTARIO DE COMPONENTES',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\CESA-VEST25-001 - 1091 - TAPIZADO DE 2 ASIENTOS Y 2 RESPALDOS DE PILOTO Y COPILOTO.xlsx',
+                'nombre' => 'CESA-VEST25-001 - 1091 - TAPIZADO DE 2 ASIENTOS Y 2 RESPALDOS DE PILOTO Y COPILOTO',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\GESA-TORN26-006 - BARRENADO DE 6 ORIFICIOS.xlsx',
+                'nombre' => 'GESA-TORN26-006 - BARRENADO DE 6 ORIFICIOS',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\Nueva carpeta\\CESA-AVCS26-048 - XA-VGZ - INSPECCION FUEL PUMP (1).xlsx',
+                'nombre' => 'CESA-AVCS26-048 - XA-VGZ - INSPECCION FUEL PUMP (1)',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\Nueva carpeta\\CESA-HANG25-161 - XB-SDS - PRUEBAS HIDROSTATICAS.xlsx',
+                'nombre' => 'CESA-HANG25-161 - XB-SDS - PRUEBAS HIDROSTATICAS',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\Nueva carpeta\\CESA-HANG25-163 - XB-SDS - PHASE A1 - 300 HOUR INSPECTION_CHECKS.xlsx',
+                'nombre' => 'CESA-HANG25-163 - XB-SDS - PHASE A1 - 300 HOUR INSPECTION_CHECKS',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\Nueva carpeta\\CESA-HANG26-026 - XB-SDS - INSPECCIÓN Y LIMPIEZA FWR MOUNT CASTING.xlsx',
+                'nombre' => 'CESA-HANG26-026 - XB-SDS - INSPECCION Y LIMPIEZA FWR MOUNT CASTING',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
+            [
+                'archivo_path' => 'A:\\RED AVIATION\\OT\\Nueva carpeta\\CESA-HANG24-151 - XA-VGZ - ATENCION A REPORTES.xlsx',
+                'nombre' => 'CESA-HANG24-151 - XA-VGZ - ATENCION A REPORTES',
+                'tipo_manual' => 'XLSX',
+                'idioma' => 'es',
+                'estado' => 'vigente',
+                'descripcion' => 'Registro documental sembrado para base de datos.',
+            ],
         ];
 
         foreach ($manuales as $manual) {
@@ -85,6 +216,8 @@ class OrdenSeeder extends Seeder
         $this->seedFren26001Example($user);
         $this->seedHang26016ExcelExample($user);
         $this->seedTren25007Example($user);
+        $this->seedAvcs26043Example($user);
+        $this->seedAdditionalOtExamples($user);
     }
 
     // CESA-BATT25-004
@@ -418,6 +551,600 @@ class OrdenSeeder extends Seeder
             ],
             'mediciones' => [],
         ]);
+    }
+
+    // CESA-AVCS26-043
+    private function seedAvcs26043Example(User $user): void
+    {
+        $area = Area::where('codigo', 'AVCS')->firstOrFail();
+        $tipo = TipoOrden::where('codigo', 'AVCS')->firstOrFail();
+
+        $orden = Orden::updateOrCreate(
+            ['folio' => 'CESA-AVCS26-043'],
+            [
+                'area_id' => $area->id,
+                'tipo_id' => $tipo->id,
+                'user_id' => $user->id,
+                'consecutivo' => 43,
+                'anio' => 2026,
+                'fecha' => '2026-02-07',
+                'cliente' => 'SKY JETS INTERNATIONAL',
+                'matricula' => 'XA-MMN',
+                'aeronave_modelo' => 'LEARJET 35',
+                'aeronave_serie' => '221',
+                'descripcion' => 'ATENCION A REPORTE PILOTO AUTOMATICO',
+                'trabajo_descripcion' => 'ATENCION A REPORTE PILOTO AUTOMATICO',
+                'componente_descripcion' => 'PILOTO AUTOMATICO',
+                'tipo_tarea' => 'ATENCION A REPORTE',
+                'intervalo' => 'UNICA VEZ',
+                'accion_correctiva' => 'LA FALLA DE LVL SE DETERMINA QUE LA FALLA ESTA EN LA COMPUTADORA DE PILOTO AUTOMATICO, SE REMPLAZA COMPLETAMENTE EL MODULO Y SE QUITA LA FALLA. EL MODULO ESTA COMPUESTO DE DOS TARJETAS LAS CUALES TAMBIEN SE AISLA Y SE DETERMINA QUE LA FALLA ESTA EN LA TARJETA DE CONTROL SE REMPLAZA QUEDANDO OPERATIVO Y LISTO PARA SU USO.',
+                'tecnico_responsable' => 'Tec. Jesus Adrian Monroy Blanco',
+                'inspector' => 'Insp. Ruben Damian Rodela 201325866',
+                'fecha_inicio' => '2026-02-07',
+                'fecha_termino' => '2026-02-07',
+                'estado' => 'cerrada',
+            ]
+        );
+
+        $this->syncOrderDetails($orden, $area, [
+            'tareas' => [
+                [
+                    'titulo' => 'Diagnostico y correccion de falla de piloto automatico LVL',
+                    'descripcion' => '07-02-26. Se diagnostica falla de piloto automatico LVL, se aisla la falla en la computadora de piloto automatico y se reemplaza la tarjeta de control del modulo para dejar el sistema operativo.',
+                    'orden' => 1,
+                    'tipo' => 'DIAGNOSTICO',
+                    'prioridad' => 'ALTA',
+                    'tiempo_estimado_min' => 180,
+                    'estado' => 'completada',
+                    'tecnico' => 'Tec. Jesus Adrian Monroy Blanco',
+                ],
+            ],
+            'discrepancias' => [
+                [
+                    'item' => '01',
+                    'descripcion' => 'Falla de piloto automatico LVL detectada en la computadora de piloto automatico.',
+                    'accion_correctiva' => 'Se reemplaza completamente el modulo y se determina que la falla estaba en la tarjeta de control, quedando operativo y listo para su uso.',
+                    'status' => 'cerrada',
+                    'inspector' => 'Insp. Ruben Damian Rodela 201325866',
+                    'fecha_inicio' => '2026-02-07',
+                    'fecha_termino' => '2026-02-07',
+                    'horas_hombre' => 3.00,
+                    'componente_numero_parte_off' => '502-1078-04',
+                    'componente_numero_serie_off' => '1771',
+                    'componente_numero_parte_on' => '502-1078-04',
+                    'componente_numero_serie_on' => '1779',
+                    'observaciones' => 'SE TOMA LA TARJETA DE CONTROL DE ESTE MODULO Y SE REMPLAZA.',
+                ],
+            ],
+            'refacciones' => [],
+            'consumibles' => [],
+            'herramientas' => [],
+            'ndt' => [],
+            'talleres_externos' => [],
+            'mediciones' => [],
+        ]);
+    }
+
+    private function seedAdditionalOtExamples(User $user): void
+    {
+        $examples = [
+            [
+                'folio' => 'CESA-AVCS26-048',
+                'area_codigo' => 'AVCS',
+                'anio' => 2026,
+                'consecutivo' => 48,
+                'fecha' => '2026-02-10',
+                'fecha_inicio' => '2026-02-23',
+                'fecha_termino' => '2026-02-27',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-VGZ',
+                'aeronave_modelo' => 'HAWKER 400',
+                'aeronave_serie' => 'NA774 (25281)',
+                'descripcion' => 'INGRESA A INSPECCION FUEL PUMP',
+                'trabajo_descripcion' => 'INGRESA A INSPECCION FUEL PUMP',
+                'componente_descripcion' => 'FUEL PUMP',
+                'componente_modelo' => 'DUKES',
+                'componente_numero_parte' => '1500-00-65',
+                'componente_numero_serie' => '-',
+                'tipo_tarea' => 'INSPECCION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se diagnostica falta de potencia, se desarma el equipo, se detectan carbones desgastados y baleros defectuosos, se adaptan carbones, se reemplazan baleros, se repara el cable de alimentacion y se realizan pruebas funcionales satisfactorias.',
+                'tecnico_responsable' => 'Tec. Fernando Moreno',
+                'inspector' => 'Insp. Eduardo Castaneda Barrera',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Diagnostico inicial de fuel pump', 'descripcion' => '23-02-26. Se conecta y energiza el equipo para diagnosticar la baja potencia de giro.', 'orden' => 1, 'tipo' => 'DIAGNOSTICO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                    ['titulo' => 'Inspeccion interna del equipo', 'descripcion' => '23-02-26. Se identifican carbones desgastados y baleros superior e inferior en mal estado.', 'orden' => 2, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                    ['titulo' => 'Adaptacion de carbones', 'descripcion' => '25-02-26. Se adaptan carbones compatibles para el equipo.', 'orden' => 3, 'tipo' => 'REPARACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                    ['titulo' => 'Cambio de baleros y armado del rotor', 'descripcion' => '25-02-26. Se realiza el cambio de baleros y se arma rotor con estator.', 'orden' => 4, 'tipo' => 'ARMADO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 360, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                    ['titulo' => 'Armado final y reparacion de cable', 'descripcion' => '26-02-26. Se colocan carbones, se repara cable de alimentacion y se completa el ensamble.', 'orden' => 5, 'tipo' => 'ARMADO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                    ['titulo' => 'Pruebas funcionales', 'descripcion' => '27-02-26. Se energiza el equipo y se valida mejor funcionamiento antes de enviarlo a pruebas.', 'orden' => 6, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Alfredo Enrique Santillan Perez'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-BATT26-001',
+                'area_codigo' => 'BATT',
+                'anio' => 2026,
+                'consecutivo' => 1,
+                'fecha' => '2026-01-13',
+                'fecha_inicio' => '2026-01-13',
+                'fecha_termino' => '2026-01-14',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-VEE',
+                'aeronave_modelo' => 'LEARJET 35',
+                'aeronave_serie' => '129',
+                'descripcion' => 'TOPPING BATERIA',
+                'trabajo_descripcion' => 'TOPPING BATERIA',
+                'componente_descripcion' => 'BATERIA',
+                'componente_modelo' => 'CONCORDE',
+                'componente_numero_parte' => 'RG-380E/44',
+                'tipo_tarea' => 'TOPPING',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se verifica el estado de la bateria, se pone a cargar, se deja reposar y se valida la tension final, quedando operativa.',
+                'tecnico_responsable' => 'Tec. Jose Luis Reyes Ramirez',
+                'inspector' => 'Insp. Eduardo Castaneda Barrera',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Carga de bateria', 'descripcion' => '13-01-26. Se verifica el estado de la bateria y se pone a cargar.', 'orden' => 1, 'tipo' => 'SERVICIO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Luis Reyes Ramirez'],
+                    ['titulo' => 'Verificacion de tension final', 'descripcion' => '14-01-26. Se verifica la tension despues del reposo y la bateria queda operativa.', 'orden' => 2, 'tipo' => 'PRUEBA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Luis Reyes Ramirez'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-ESTR26-004',
+                'area_codigo' => 'ESTR',
+                'anio' => 2026,
+                'consecutivo' => 4,
+                'fecha' => '2026-02-13',
+                'fecha_inicio' => '2026-02-13',
+                'fecha_termino' => '2026-02-17',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-TZA',
+                'aeronave_modelo' => 'AGUSTA AW109SP',
+                'aeronave_serie' => '22380',
+                'descripcion' => 'REPARACION DE FAIRING RH ASSY. N/P 109-0329-61-202',
+                'trabajo_descripcion' => 'REPARACION DE FAIRING RH ASSY. N/P 109-0329-61-202',
+                'componente_descripcion' => 'FAIRING RH',
+                'componente_modelo' => '-',
+                'componente_numero_parte' => '109-0329-61-202',
+                'componente_numero_serie' => '-',
+                'tipo_tarea' => 'REPARACION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se endereza el dano, se retrabajan defectos, se aplica primer exterior e interior y se pinta interior en negro mate.',
+                'tecnico_responsable' => 'Tec. Antonio Ernesto Martinez Ibanez',
+                'inspector' => 'Pendiente',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Remocion de empaque', 'descripcion' => '13-02-26. Se remueve empaque del fairing.', 'orden' => 1, 'tipo' => 'DESENSAMBLE', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Inicio de enderezado', 'descripcion' => '13-02-26. Se inicia el enderezado del dano.', 'orden' => 2, 'tipo' => 'REPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Solicitud de material', 'descripcion' => '14-02-26. Se solicita y recoge material necesario para la reparacion.', 'orden' => 3, 'tipo' => 'ABASTO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Fabricacion de apoyo para enderezado', 'descripcion' => '16-02-26. Se solicita al taller de vestiduras la elaboracion de un saco de arena.', 'orden' => 4, 'tipo' => 'SOPORTE', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 150, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Continuacion de enderezado', 'descripcion' => '16-02-26. Se continua el enderezado del dano.', 'orden' => 5, 'tipo' => 'REPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Aplicacion de pasta', 'descripcion' => '16-02-26. Se aplica pasta para relleno de defectos.', 'orden' => 6, 'tipo' => 'ACABADO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Retrabajo y primer', 'descripcion' => '16-02-26. Se retrabaja la pasta y se aplica primer.', 'orden' => 7, 'tipo' => 'PINTURA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Correccion final de defectos', 'descripcion' => '17-02-26. Se aplica plaste en defectos restantes y se reaplica primer.', 'orden' => 8, 'tipo' => 'PINTURA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                    ['titulo' => 'Acabado interior y reinstalacion', 'descripcion' => '17-02-26. Se aplica negro mate en el interior y se reinstala empaque.', 'orden' => 9, 'tipo' => 'INSTALACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Antonio Ernesto Martinez Ibanez'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HANG26-014',
+                'area_codigo' => 'HANG',
+                'anio' => 2026,
+                'consecutivo' => 14,
+                'fecha' => '2026-01-13',
+                'fecha_inicio' => '2026-01-13',
+                'fecha_termino' => '2026-01-13',
+                'cliente' => 'SKY JETS INTERNATIONAL',
+                'matricula' => 'XA-MMN',
+                'aeronave_modelo' => 'LEARJET 35',
+                'aeronave_serie' => '221',
+                'descripcion' => 'ATENCION A REPORTE LUZ SPOILER',
+                'trabajo_descripcion' => 'ATENCION A REPORTE LUZ SPOILER. POR REPORTE DE LUZ ENCENDIDA DE SPOILER.',
+                'componente_descripcion' => 'SISTEMA DE SPOILERS',
+                'tipo_tarea' => 'ATENCION A REPORTE',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se inspecciona el sistema de spoilers y se encuentra un switch desajustado respecto al lado derecho; se ajusta de acuerdo con el AMM y el sistema queda operativo.',
+                'tecnico_responsable' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'inspector' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Inspeccion inicial del sistema', 'descripcion' => '13-01-26. Se inspecciona el area de spoilers con apoyo de la mula.', 'orden' => 1, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Manuel Huertas Garrido'],
+                    ['titulo' => 'Ajuste de switch', 'descripcion' => '13-01-26. Se localiza switch con ajuste distinto y se corrige conforme al AMM.', 'orden' => 2, 'tipo' => 'AJUSTE', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Alberto Flores Alcantara'],
+                    ['titulo' => 'Prueba funcional de spoilers', 'descripcion' => '13-01-26. Se realiza test del sistema y queda operando correctamente.', 'orden' => 3, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin 202504522'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HELI25-002',
+                'area_codigo' => 'HELI',
+                'anio' => 2025,
+                'consecutivo' => 2,
+                'fecha' => '2025-03-21',
+                'fecha_inicio' => '2025-03-21',
+                'fecha_termino' => '2025-04-25',
+                'cliente' => 'FAM',
+                'matricula' => '-',
+                'aeronave_modelo' => 'UH-60L',
+                'aeronave_serie' => '-',
+                'descripcion' => 'INSPECCION Y REPARACION DE TANQUE AUXILIAR DE COMBUSTIBLE',
+                'trabajo_descripcion' => 'INSPECCION Y REPARACION DE TANQUE AUXILIAR DE COMBUSTIBLE',
+                'componente_descripcion' => 'TANQUE AUXILIAR DE COMBUSTIBLE',
+                'componente_modelo' => 'SIKORSKY / UH-60L',
+                'componente_numero_parte' => '235SFT001-501',
+                'componente_numero_serie' => '94373007',
+                'tipo_tarea' => 'INSPECCION Y REPARACION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se efectua inspeccion visual y pruebas operacionales, incluida verificacion por delaminacion en areas externas, quedando el tanque en condiciones aeronavegables de acuerdo con manual.',
+                'tecnico_responsable' => 'Tec. Ernesto Antonio Martinez Ibanez',
+                'inspector' => 'Pendiente',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Inspeccion preliminar general', 'descripcion' => '21-03-25. Inspeccion preliminar al tanque.', 'orden' => 1, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Limpieza y drenado', 'descripcion' => '21-03-25. Limpieza y drenado del remanente de combustible.', 'orden' => 2, 'tipo' => 'LIMPIEZA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Remocion de registros y tapones', 'descripcion' => '24-03-25. Se remueven registros, tapones de seguridad y conos aerodinamicos para inspeccion.', 'orden' => 3, 'tipo' => 'DESENSAMBLE', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 180, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Inspeccion visual interna y externa', 'descripcion' => '25-03-25. Inspeccion por delaminacion, roturas y areas criticas.', 'orden' => 4, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 360, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Pruebas operacionales', 'descripcion' => '21-04-25. Se realizan pruebas de presion para verificar ausencia de fugas.', 'orden' => 5, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Limpieza final y resguardo', 'descripcion' => '22-04-25. Limpieza del liquido utilizado y resguardo en contenedor apropiado.', 'orden' => 6, 'tipo' => 'LIMPIEZA', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Reinstalacion de registros', 'descripcion' => '25-04-25. Se instalan registros con tornilleria apropiada para traslado.', 'orden' => 7, 'tipo' => 'INSTALACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 120, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                    ['titulo' => 'Cierre documental', 'descripcion' => '28-04-25. Se completa papeleria y cierre de ordenes de trabajo.', 'orden' => 8, 'tipo' => 'ADMINISTRATIVO', 'prioridad' => 'BAJA', 'tiempo_estimado_min' => 60, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Mauricio Jaime Bonilla 200700355'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-PROP25-001',
+                'area_codigo' => 'PROP',
+                'anio' => 2025,
+                'consecutivo' => 1,
+                'fecha' => '2025-08-14',
+                'fecha_inicio' => '2025-08-14',
+                'fecha_termino' => '2025-08-14',
+                'cliente' => 'CESA',
+                'matricula' => '-',
+                'aeronave_modelo' => 'CESSNA 414',
+                'aeronave_serie' => '-',
+                'descripcion' => 'INSPECCION A PROPELLER LH',
+                'trabajo_descripcion' => 'INSPECCION A PROPELLER LH',
+                'componente_descripcion' => 'PROPELLER',
+                'componente_modelo' => 'MCCAULEY',
+                'componente_numero_parte' => '3AF32C87-NR',
+                'componente_numero_serie' => '786224',
+                'tipo_tarea' => 'INSPECCION',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se efectua inspeccion del propeller de acuerdo con el manual del fabricante, encontrandose en estado operativo.',
+                'tecnico_responsable' => 'Tec. Jose Carlos Rojas Estrada 202273703',
+                'inspector' => 'Pendiente',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Inspeccion de propeller LH', 'descripcion' => '14-08-25. Se inspecciona propeller P/N 3AF32C87-NR, S/N 786224, conforme al manual del fabricante.', 'orden' => 1, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Carlos Rojas Estrada 202273703'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-SALV26-001',
+                'area_codigo' => 'SALV',
+                'anio' => 2026,
+                'consecutivo' => 1,
+                'fecha' => '2026-01-09',
+                'fecha_inicio' => '2026-01-09',
+                'fecha_termino' => '2026-01-09',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-JUL',
+                'aeronave_modelo' => 'HAWKER 800A',
+                'aeronave_serie' => '258006',
+                'descripcion' => 'INVENTARIO DE COMPONENTES',
+                'trabajo_descripcion' => 'INVENTARIO DE COMPONENTES',
+                'componente_descripcion' => 'COMPONENTES DIVERSOS',
+                'tipo_tarea' => 'INVENTARIO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realiza inventario fisico y documental de componentes recuperados para control y trazabilidad.',
+                'tecnico_responsable' => 'Tec. Cesar Mora',
+                'inspector' => 'Ing. Eduardo Trejo Perez',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Levantamiento de inventario', 'descripcion' => '09-01-26. Se realiza inventario de componentes recuperados de la aeronave.', 'orden' => 1, 'tipo' => 'INVENTARIO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Cesar Mora'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [
+                    ['item' => 'R1', 'nombre' => 'COVER LH', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => '25-6WS211', 'status' => 'OK'],
+                    ['item' => 'R2', 'nombre' => 'VALVE REVERSING LH', 'descripcion' => 'Inventario. S/N removido: LK9007601. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => 'AIR 48542-1', 'status' => 'OK'],
+                    ['item' => 'R3', 'nombre' => 'LAMP ASSY LH', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 2, 'numero_parte' => '22875-1-24', 'status' => 'OK'],
+                    ['item' => 'R4', 'nombre' => 'LAMP ASSY RH', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 2, 'numero_parte' => '22875-2-24', 'status' => 'OK'],
+                    ['item' => 'R5', 'nombre' => 'VALVE SELECTOR', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 2, 'numero_parte' => 'HTE1984-1', 'status' => 'UNIT EXCHANGE ITEM MOD 257544'],
+                    ['item' => 'R6', 'nombre' => 'VALVE GRAVITY CROSFEED', 'descripcion' => 'Inventario. S/N removido: M-149 VRV52. S/N instalado: N/A.', 'cantidad' => 2, 'numero_parte' => 'HTE1984-1', 'status' => 'UNIT EXCHANGE ITEM MOD 257544'],
+                    ['item' => 'R7', 'nombre' => 'DETECTOR FLUX', 'descripcion' => 'Inventario. S/N removido: 27113. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => '522-4945-001', 'status' => '3 BOLT (A169B1), 3 WASHER (SP124B)'],
+                    ['item' => 'R8', 'nombre' => 'DETECTOR FLUX', 'descripcion' => 'Inventario. S/N removido: 28561. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => '522-4945-001', 'status' => '3 BOLT (A169B1), 3 WASHER (SP124B)'],
+                    ['item' => 'R9', 'nombre' => 'BRACKET ASSY', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => '25CW651A', 'status' => 'BOLT(A102-16D), BOLT (A102-12D), NUT(A110ES), RING-ABUTMET (25CW163)'],
+                    ['item' => 'R10', 'nombre' => 'BRACKET ASSY - RUDDER PULLEY', 'descripcion' => 'Inventario. S/N removido: N/A. S/N instalado: N/A.', 'cantidad' => 1, 'numero_parte' => '25CF465AB', 'status' => 'OK'],
+                ],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-VEST25-001',
+                'area_codigo' => 'VEST',
+                'anio' => 2025,
+                'consecutivo' => 1,
+                'fecha' => '2025-01-09',
+                'fecha_inicio' => '2025-01-17',
+                'fecha_termino' => '2025-01-24',
+                'cliente' => 'FAM',
+                'matricula' => '1091',
+                'aeronave_modelo' => 'UH-60L',
+                'aeronave_serie' => '702053',
+                'descripcion' => 'TAPIZADO DE 2 ASIENTOS Y 2 RESPALDOS DE PILOTO Y COPILOTO',
+                'trabajo_descripcion' => 'TAPIZADO DE 2 ASIENTOS Y 2 RESPALDOS DE PILOTO Y COPILOTO',
+                'componente_descripcion' => 'ASIENTOS Y RESPALDOS DE PILOTO Y COPILOTO',
+                'tipo_tarea' => 'TAPIZADO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realiza moldeado de foam, plantillas, corte y costura de materiales, y montaje final de vestiduras sobre el acojinamiento.',
+                'tecnico_responsable' => 'Tec. Adrian Reyes Trejo',
+                'inspector' => 'Insp. Heriberto Garcia Acevedo 200204416',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Moldeado de foam', 'descripcion' => '17-01-25. Moldeado de foam de asientos de pilotos.', 'orden' => 1, 'tipo' => 'FABRICACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Adrian Reyes Trejo'],
+                    ['titulo' => 'Plantillas de carton', 'descripcion' => '18-01-25. Elaboracion de plantillas en carton y hule cristal.', 'orden' => 2, 'tipo' => 'TRAZO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Adrian Reyes Trejo'],
+                    ['titulo' => 'Corte y costura', 'descripcion' => '20-01-25. Corte de piel y costura.', 'orden' => 3, 'tipo' => 'COSTURA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Adrian Reyes Trejo'],
+                    ['titulo' => 'Costura de partes', 'descripcion' => '21-01-25. Costura de partes del conjunto.', 'orden' => 4, 'tipo' => 'COSTURA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Adrian Reyes Trejo'],
+                    ['titulo' => 'Enfundado de acojinamiento', 'descripcion' => '22-01-25. Enfundado final del acojinamiento.', 'orden' => 5, 'tipo' => 'INSTALACION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Adrian Reyes Trejo'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'GESA-TORN26-006',
+                'area_codigo' => 'TORN',
+                'anio' => 2026,
+                'consecutivo' => 6,
+                'fecha' => '2026-01-27',
+                'fecha_inicio' => '2026-01-27',
+                'fecha_termino' => '2026-02-06',
+                'cliente' => 'NAVE',
+                'matricula' => '-',
+                'aeronave_modelo' => '-',
+                'aeronave_serie' => '-',
+                'descripcion' => 'BARRENADO DE 6 ORIFICIOS A 16 PLACAS PARA NAVE 2 EXPORTEC',
+                'trabajo_descripcion' => 'BARRENADO DE 6 ORIFICIOS A 16 PLACAS PARA NAVE 2 EXPORTEC',
+                'componente_descripcion' => 'PLACAS PARA NAVE 2',
+                'tipo_tarea' => 'BARRENADO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se realiza trazado y barrenado de placas conforme a distancias indicadas y diametro requerido.',
+                'tecnico_responsable' => 'Tec. Romero Guzman Victor',
+                'inspector' => 'Pendiente',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Trazado y barrenado de placas', 'descripcion' => '27-01-26 a 06-02-26. Se trazan y barrenan placas con separaciones de 24 cm, 23 cm y 12.5 cm, con orificios de 1 1/4.', 'orden' => 1, 'tipo' => 'MAQUINADO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 1440, 'estado' => 'completada', 'tecnico' => 'Tec. Romero Guzman Victor'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HANG25-161',
+                'area_codigo' => 'HANG',
+                'anio' => 2025,
+                'consecutivo' => 161,
+                'fecha' => '2025-12-05',
+                'fecha_inicio' => '2025-12-05',
+                'fecha_termino' => '2025-12-05',
+                'cliente' => 'CESA',
+                'matricula' => 'XB-SDS',
+                'aeronave_modelo' => 'LEARJET 35A',
+                'aeronave_serie' => '35-492',
+                'descripcion' => 'PRUEBAS HIDROSTATICAS',
+                'trabajo_descripcion' => 'PRUEBAS HIDROSTATICAS',
+                'componente_descripcion' => 'BOTELLAS Y ESFERAS DEL SISTEMA',
+                'tipo_tarea' => 'SERVICIO',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se remueven esferas extintoras LH y RH, se instalan botellas vigentes, se envia y recibe botella de oxigeno para inspeccion HYD, se instala esfera vigente de aire de emergencia y se recarga nitrogeno, dejando el sistema operativo.',
+                'tecnico_responsable' => 'Tec. Jose Alberto Flores Alcantara',
+                'inspector' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Pruebas hidrostaticas e intercambio de botellas', 'descripcion' => '05-12-25. Se remueven botellas y esferas, se instalan componentes vigentes y se recargan niveles para dejar el sistema operativo.', 'orden' => 1, 'tipo' => 'SERVICIO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 600, 'estado' => 'completada', 'tecnico' => 'Tec. Jose Alberto Flores Alcantara'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HANG25-163',
+                'area_codigo' => 'HANG',
+                'anio' => 2025,
+                'consecutivo' => 163,
+                'fecha' => '2025-12-01',
+                'fecha_inicio' => '2025-12-01',
+                'fecha_termino' => '2025-12-01',
+                'cliente' => 'GESA',
+                'matricula' => 'XB-SDS',
+                'aeronave_modelo' => 'LEARJET 35A',
+                'aeronave_serie' => '35-492',
+                'descripcion' => 'PHASE A1 - 300 HOUR INSPECTION/CHECKS',
+                'trabajo_descripcion' => 'PHASE A1 - 300 HOUR INSPECTION/CHECKS',
+                'componente_descripcion' => 'AERONAVE',
+                'tipo_tarea' => 'INSPECCION',
+                'intervalo' => '300 HOUR',
+                'accion_correctiva' => 'Se realiza inspeccion fase A1 de 300 horas conforme al programa de mantenimiento.',
+                'tecnico_responsable' => 'Pendiente',
+                'inspector' => 'Tec. Omar Jair Montoya Landin 202504522',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Phase A1 - 300 Hour Inspection/Checks', 'descripcion' => 'Se registra inspeccion fase A1 de 300 horas para la aeronave XB-SDS.', 'orden' => 1, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Pendiente'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HANG26-026',
+                'area_codigo' => 'HANG',
+                'anio' => 2026,
+                'consecutivo' => 26,
+                'fecha' => '2026-02-18',
+                'fecha_inicio' => '2026-02-18',
+                'fecha_termino' => '2026-02-19',
+                'cliente' => 'CESA',
+                'matricula' => 'XB-SDS',
+                'aeronave_modelo' => 'LEARJET 35A',
+                'aeronave_serie' => '492',
+                'descripcion' => 'INSPECCION Y LIMPIEZA FWR MOUNT CASTING',
+                'trabajo_descripcion' => 'INSPECCION Y LIMPIEZA PARA ENVIO A PRUEBAS NDT DE FWR MOUNT CASTING Y COMPONENTES ASOCIADOS',
+                'componente_descripcion' => 'FWR MOUNT CASTING Y COMPONENTES ASOCIADOS',
+                'tipo_tarea' => 'INSPECCION Y LIMPIEZA',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se efectuan trabajos de limpieza de ferreteria, remocion de pintura para inspeccion NDT e inspeccion dimensional de los componentes.',
+                'tecnico_responsable' => 'Tec. Hilario Gutierrez Hernandez',
+                'inspector' => 'Pendiente',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Recepcion de componentes', 'descripcion' => '18-02-26. Recepcion de componentes.', 'orden' => 1, 'tipo' => 'RECEPCION', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                    ['titulo' => 'Aplicacion de removedor', 'descripcion' => '18-02-26. Aplicacion de removedor para limpieza.', 'orden' => 2, 'tipo' => 'LIMPIEZA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                    ['titulo' => 'Envio de pernos a remocion de cadminizado', 'descripcion' => '19-02-26. Se envian pernos a remocion de cadminizado.', 'orden' => 3, 'tipo' => 'ABASTO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                    ['titulo' => 'Inspeccion dimensional micrometrica', 'descripcion' => '19-02-26. Se realiza inspeccion dimensional micrometrica.', 'orden' => 4, 'tipo' => 'INSPECCION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                    ['titulo' => 'Envio a inspeccion NDT', 'descripcion' => '19-02-26. Se envia a inspeccion NDT.', 'orden' => 5, 'tipo' => 'NDT', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 30, 'estado' => 'completada', 'tecnico' => 'Tec. Hilario Gutierrez Hernandez'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+            [
+                'folio' => 'CESA-HANG24-151',
+                'area_codigo' => 'HANG',
+                'anio' => 2024,
+                'consecutivo' => 151,
+                'fecha' => '2024-12-20',
+                'fecha_inicio' => '2024-12-20',
+                'fecha_termino' => '2025-02-08',
+                'cliente' => 'CESA',
+                'matricula' => 'XA-VGZ',
+                'aeronave_modelo' => 'HAWKER 800',
+                'aeronave_serie' => '-',
+                'descripcion' => 'ATENCION A REPORTES',
+                'trabajo_descripcion' => 'ATENCION A REPORTES',
+                'componente_descripcion' => 'SISTEMAS DIVERSOS / TKS',
+                'tipo_tarea' => 'ATENCION A REPORTES',
+                'intervalo' => null,
+                'accion_correctiva' => 'Se atienden reportes diversos, incluyendo reemplazo de bomba main fuel del motor LH y trabajos de servicio, desobstruccion, pruebas, sellado e instalacion de paneles TKS y bordes de ataque del estabilizador.',
+                'tecnico_responsable' => 'Tec. Omar Jair Montoya Landin',
+                'inspector' => 'Tec. Juan Martin Carrillo Trejo',
+                'estado' => 'cerrada',
+                'tareas' => [
+                    ['titulo' => 'Reemplazo de bomba main fuel motor LH', 'descripcion' => '20-12-24. Reemplazo de bomba main fuel del motor LH.', 'orden' => 1, 'tipo' => 'REEMPLAZO', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 240, 'estado' => 'completada', 'tecnico' => 'Tec. Omar Jair Montoya Landin'],
+                    ['titulo' => 'Desmontaje de paneles TKS', 'descripcion' => 'Se desmontan paneles de borde de ataque de estabilizador horizontal y vertical para servicio por obstruccion del sistema TKS.', 'orden' => 2, 'tipo' => 'DESENSAMBLE', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 1200, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Desarmado y destape de measuring pipes', 'descripcion' => 'Se desarman paneles TKS, se destapan measuring pipes y se verifica salida de liquido.', 'orden' => 3, 'tipo' => 'REPARACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 4800, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Armado de paneles TKS', 'descripcion' => '04-02-25. Limpieza de bordes del estabilizador horizontal y armado de paneles TKS.', 'orden' => 4, 'tipo' => 'ARMADO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 960, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Acondicionamiento e instalacion preliminar', 'descripcion' => '05-02-25. Se limpia estabilizador, se elimina PRC viejo y se instalan bordes de ataque con tornillos de resguardo.', 'orden' => 5, 'tipo' => 'INSTALACION', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 960, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Prueba anti-ice y atencion de fugas', 'descripcion' => '06-02-25. Se realiza prueba anti-ice, se cambian o-rings, se verifica ausencia de fugas y se continua instalacion.', 'orden' => 6, 'tipo' => 'PRUEBA', 'prioridad' => 'ALTA', 'tiempo_estimado_min' => 960, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Aplicacion de PRC', 'descripcion' => '07-02-25. Se enmascara y se inicia aplicacion de PRC en bordes de ataque.', 'orden' => 7, 'tipo' => 'SELLADO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 960, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                    ['titulo' => 'Sellado final de paneles TKS', 'descripcion' => '08-02-25. Se continua preparacion y enmascarado de paneles TKS para sellado final.', 'orden' => 8, 'tipo' => 'SELLADO', 'prioridad' => 'MEDIA', 'tiempo_estimado_min' => 480, 'estado' => 'completada', 'tecnico' => 'Tec. Luis Miguel Romero Hernandez'],
+                ],
+                'discrepancias' => [],
+                'refacciones' => [],
+                'consumibles' => [],
+                'herramientas' => [],
+                'ndt' => [],
+                'talleres_externos' => [],
+                'mediciones' => [],
+            ],
+        ];
+
+        foreach ($examples as $example) {
+            $area = Area::where('codigo', $example['area_codigo'])->firstOrFail();
+            $tipo = TipoOrden::where('codigo', $example['area_codigo'])->firstOrFail();
+
+            $orden = Orden::updateOrCreate(
+                ['folio' => $example['folio']],
+                [
+                    'area_id' => $area->id,
+                    'tipo_id' => $tipo->id,
+                    'user_id' => $user->id,
+                    'consecutivo' => $example['consecutivo'],
+                    'anio' => $example['anio'],
+                    'fecha' => $example['fecha'],
+                    'cliente' => $example['cliente'],
+                    'matricula' => $example['matricula'],
+                    'aeronave_modelo' => $example['aeronave_modelo'],
+                    'aeronave_serie' => $example['aeronave_serie'],
+                    'descripcion' => $example['descripcion'],
+                    'trabajo_descripcion' => $example['trabajo_descripcion'],
+                    'componente_descripcion' => $example['componente_descripcion'],
+                    'componente_modelo' => $example['componente_modelo'] ?? null,
+                    'componente_numero_parte' => $example['componente_numero_parte'] ?? null,
+                    'componente_numero_serie' => $example['componente_numero_serie'] ?? null,
+                    'tipo_tarea' => $example['tipo_tarea'],
+                    'intervalo' => $example['intervalo'],
+                    'accion_correctiva' => $example['accion_correctiva'],
+                    'tecnico_responsable' => $example['tecnico_responsable'],
+                    'inspector' => $example['inspector'],
+                    'fecha_inicio' => $example['fecha_inicio'],
+                    'fecha_termino' => $example['fecha_termino'],
+                    'estado' => $example['estado'],
+                ]
+            );
+
+            $this->syncOrderDetails($orden, $area, $example);
+        }
     }
 
     private function seedAvionicsExample(User $user): void
@@ -1009,6 +1736,8 @@ class OrdenSeeder extends Seeder
 
     private function syncOrderDetails(Orden $orden, Area $area, array $example): void
     {
+        $this->syncAircraftFromOrder($orden);
+
         $orden->tareas()->delete();
         foreach ($example['tareas'] ?? [] as $task) {
             Tarea::create([
@@ -1032,6 +1761,66 @@ class OrdenSeeder extends Seeder
         $this->syncSimpleRelation($orden, 'ndt', $example['ndt'] ?? []);
         $this->syncSimpleRelation($orden, 'talleresExternos', $example['talleres_externos'] ?? []);
         $this->syncSimpleRelation($orden, 'mediciones', $example['mediciones'] ?? []);
+    }
+
+    private function syncAircraftFromOrder(Orden $orden): void
+    {
+        $matricula = trim((string) ($orden->matricula ?? ''));
+
+        if ($matricula === '' || $matricula === '-' || strtoupper($matricula) === 'N/A') {
+            return;
+        }
+
+        [$fabricante, $modelo] = $this->splitAircraftModel((string) ($orden->aeronave_modelo ?? ''));
+
+        Aeronave::updateOrCreate(
+            ['matricula' => $matricula],
+            [
+                'cliente' => $orden->cliente ?: null,
+                'fabricante' => $fabricante,
+                'modelo' => $modelo,
+                'numero_serie' => $this->nullableAircraftValue($orden->aeronave_serie),
+                'estado' => 'activa',
+                'notas' => 'Seed basado en orden ' . $orden->folio . '.',
+            ]
+        );
+    }
+
+    private function splitAircraftModel(string $rawModel): array
+    {
+        $rawModel = trim($rawModel);
+
+        if ($rawModel === '' || $rawModel === '-' || strtoupper($rawModel) === 'N/A') {
+            return [null, null];
+        }
+
+        $parts = preg_split('/\s+/', $rawModel) ?: [];
+
+        if (count($parts) <= 1) {
+            return [null, $rawModel];
+        }
+
+        $fabricante = ucfirst(strtolower((string) array_shift($parts)));
+        $modelo = trim(implode(' ', $parts));
+
+        return [$fabricante, $modelo !== '' ? $modelo : null];
+    }
+
+    private function nullableAircraftValue(mixed $value): ?string
+    {
+        $normalized = trim((string) ($value ?? ''));
+
+        if ($normalized === '' || $normalized === '-' || strtoupper($normalized) === 'N/A') {
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function bustListingCaches(): void
+    {
+        Cache::forever('ordenes_cache_version', (int) Cache::get('ordenes_cache_version', 1) + 1);
+        Cache::forever('motores_cache_version', (int) Cache::get('motores_cache_version', 1) + 1);
     }
 
     private function syncSimpleRelation(Orden $orden, string $relation, array $items): void

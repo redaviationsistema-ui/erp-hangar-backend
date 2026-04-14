@@ -1170,5 +1170,6 @@ class OrdenController extends Controller
     {
         Cache::forever('ordenes_cache_version', (int) Cache::get('ordenes_cache_version', 1) + 1);
         Cache::forever('motores_cache_version', (int) Cache::get('motores_cache_version', 1) + 1);
+        Cache::forever('dashboard_cache_version', (int) Cache::get('dashboard_cache_version', 1) + 1);
     }
 }

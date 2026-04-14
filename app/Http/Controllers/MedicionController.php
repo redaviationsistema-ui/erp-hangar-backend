@@ -91,7 +91,7 @@ class MedicionController extends Controller
 
     private function validatePayload(Request $request, bool $partial): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'orden_id' => ($partial ? 'sometimes' : 'required') . '|exists:ordenes,id',
             'item' => 'sometimes|nullable|string|max:20',
             'tecnico' => 'sometimes|nullable|string|max:255',
@@ -100,7 +100,9 @@ class MedicionController extends Controller
             'manual_id' => 'sometimes|nullable|string|max:255',
             'resultado_od' => 'sometimes|nullable|in:DENTRO DE PARAMETROS,FUERA DE PARAMETROS',
             'resultado_id' => 'sometimes|nullable|in:DENTRO DE PARAMETROS,FUERA DE PARAMETROS',
-            'imagen_path' => 'sometimes|nullable|string|max:2048',
+            'imagen_path' => $request->hasFile('imagen_path')
+                ? 'sometimes|nullable|image|max:5120'
+                : 'sometimes|nullable|string|max:2048',
             'foto' => 'sometimes|nullable|image|max:5120',
             'imagen' => 'sometimes|nullable|image|max:5120',
             'image' => 'sometimes|nullable|image|max:5120',
@@ -110,5 +112,16 @@ class MedicionController extends Controller
             'valor' => 'sometimes|nullable|string|max:255',
             'unidad' => 'sometimes|nullable|string|max:255',
         ]);
+
+        $parametro = trim((string) ($data['parametro'] ?? ''));
+        if ($parametro === '') {
+            $fallback = trim((string) ($data['descripcion'] ?? $data['item'] ?? ''));
+            if ($fallback !== '') {
+                $data['parametro'] = $fallback;
+            }
+        }
+
+        return $data;
     }
 }
+
