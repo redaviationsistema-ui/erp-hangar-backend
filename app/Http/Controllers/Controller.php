@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Support\PublicStoragePath;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -167,6 +168,27 @@ abstract class Controller
     protected function isTecnicoUser(Request $request): bool
     {
         return $request->user()?->rol === 'tecnico';
+    }
+
+    protected function isClienteUser(Request $request): bool
+    {
+        return $request->user() instanceof Cliente
+            || $request->user()?->rol === 'cliente';
+    }
+
+    protected function currentClientNames(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user instanceof Cliente) {
+            return array_values(array_filter(array_unique([
+                trim((string) $user->nombre_comercial),
+                trim((string) $user->razon_social),
+                trim((string) $user->contacto_nombre),
+            ])));
+        }
+
+        return [];
     }
 
     protected function authorizeTecnicoOnly(Request $request, string $message = 'Solo el tecnico del area puede modificar este registro.'): void

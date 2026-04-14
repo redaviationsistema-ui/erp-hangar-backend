@@ -57,6 +57,8 @@ class OrdenController extends Controller
                 ->when($request->filled('folio'), fn ($q) => $this->applyIndexedPrefixSearch($q, 'ordenes.folio', $request->string('folio')))
                 ->when($request->filled('matricula'), fn ($q) => $this->applyIndexedPrefixSearch($q, 'ordenes.matricula', $request->string('matricula')));
 
+            $this->applyClientScope($request, $query, 'ordenes.cliente');
+
             $perPage = max(1, min($request->integer('per_page', 10), 100));
             $ordenes = $fastMode
                 ? $query->orderByDesc('ordenes.fecha')->orderByDesc('ordenes.id')->simplePaginate($perPage)
@@ -112,6 +114,8 @@ class OrdenController extends Controller
 
     public function store(StoreOrdenRequest $request)
     {
+        abort_if($this->isClienteUser($request), 403, 'Los clientes solo pueden consultar sus ordenes de trabajo.');
+
         $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
             'area_id',
             'ata_task_template_id',
@@ -221,6 +225,7 @@ class OrdenController extends Controller
 
     public function show(Orden $ordene)
     {
+        $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
         $payload = Cache::remember($this->cacheKey('show', ['id' => $ordene->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene) {
@@ -238,6 +243,7 @@ class OrdenController extends Controller
 
     public function update(UpdateOrdenRequest $request, Orden $ordene)
     {
+        abort_if($this->isClienteUser($request), 403, 'Los clientes solo pueden consultar sus ordenes de trabajo.');
         $this->authorizeModelArea($request, $ordene);
         $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
             'area_id',
@@ -341,6 +347,7 @@ class OrdenController extends Controller
 
     public function destroy(Orden $ordene)
     {
+        abort_if($this->isClienteUser(request()), 403, 'Los clientes solo pueden consultar sus ordenes de trabajo.');
         $this->authorizeModelArea(request(), $ordene);
         $ordene->delete();
         $this->bustCache();
@@ -353,6 +360,7 @@ class OrdenController extends Controller
 
     public function showCompleto(Orden $ordene)
     {
+        $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
         $payload = Cache::remember($this->cacheKey('completo', ['id' => $ordene->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene) {
@@ -368,6 +376,7 @@ class OrdenController extends Controller
 
     public function showTraceability(Orden $ordene)
     {
+        $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
         $payload = Cache::remember(
@@ -1142,6 +1151,39 @@ class OrdenController extends Controller
             $data['aeronave_modelo'] ??= $motor->aeronave->modelo;
             $data['aeronave_serie'] ??= $motor->aeronave->numero_serie;
         }
+    }
+
+    private function applyClientScope(Request $request, \Illuminate\Database\Eloquent\Builder $query, string $column): void
+    {
+        if (! $this->isClienteUser($request)) {
+            return;
+        }
+
+        $names = $this->currentClientNames($request);
+
+        if ($names === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function ($builder) use ($column, $names) {
+            foreach ($names as $name) {
+                $builder->orWhere($column, $name);
+            }
+        });
+    }
+
+    private function authorizeClientOrderAccess(Request $request, Orden $ordene): void
+    {
+        if (! $this->isClienteUser($request)) {
+            return;
+        }
+
+        $names = array_map('mb_strtolower', $this->currentClientNames($request));
+        $orderClient = mb_strtolower(trim((string) $ordene->cliente));
+
+        abort_unless($orderClient !== '' && in_array($orderClient, $names, true), 403, 'No autorizado para consultar esta orden.');
     }
 
     private function nestedKeys(): array

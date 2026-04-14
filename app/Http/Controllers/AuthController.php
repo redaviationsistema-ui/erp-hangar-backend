@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\User;
 use App\Support\Audit\AuditLogger;
 use Illuminate\Http\Request;
@@ -16,28 +17,48 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::query()
-            ->leftJoin('areas as area', 'area.id', '=', 'users.area_id')
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                'users.password',
-                'users.area_id',
-                'users.rol',
-                'users.rol_nombre',
-                'users.telefono',
-                'users.puesto',
-                'users.estado',
-                'users.permisos',
-                'area.codigo as area_codigo',
-                'area.numero as area_numero',
-                'area.nombre as area_nombre',
-            ])
-            ->where('users.email', $credentials['email'])
+        $cliente = Cliente::query()
+            ->where('email', $credentials['email'])
             ->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if ($cliente) {
+            if (! Hash::check($credentials['password'], $cliente->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Credenciales invalidas.',
+                ], 401);
+            }
+
+            $token = $cliente->createToken('api-token')->plainTextToken;
+
+            app()->terminating(function () use ($cliente) {
+                AuditLogger::log('login', "Inicio de sesion del cliente {$cliente->email}.", [
+                    'entity_type' => 'session',
+                    'entity_id' => $cliente->id,
+                    'entity_label' => $cliente->email,
+                    'context' => [
+                        'auth_model' => 'cliente',
+                    ],
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => $this->serializeCliente($cliente),
+            ]);
+        }
+
+        $user = $this->findUserByEmail($credentials['email']);
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Credenciales invalidas.',
+            ], 401);
+        }
+
+        if (! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Credenciales invalidas.',
@@ -68,12 +89,24 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $actor = $request->user();
+
+        if ($actor instanceof Cliente) {
+            $cliente = Cliente::query()->findOrFail($actor->id);
+
+            return response()->json([
+                'success' => true,
+                'user' => $this->serializeCliente($cliente),
+            ]);
+        }
+
         $user = User::query()
             ->leftJoin('areas as area', 'area.id', '=', 'users.area_id')
             ->select([
                 'users.id',
                 'users.name',
                 'users.email',
+                'users.password',
                 'users.area_id',
                 'users.rol',
                 'users.rol_nombre',
@@ -141,6 +174,62 @@ class AuthController extends Controller
                 'nombre' => 'GENERAL',
             ],
         ];
+    }
+
+    private function serializeCliente(Cliente $cliente): array
+    {
+        return [
+            'id' => $cliente->id,
+            'name' => $cliente->contacto_nombre ?: $cliente->nombre_comercial,
+            'nombre' => $cliente->contacto_nombre ?: $cliente->nombre_comercial,
+            'email' => $cliente->email,
+            'rol' => 'cliente',
+            'rol_nombre' => 'cliente',
+            'telefono' => $cliente->telefono,
+            'puesto' => 'Cliente',
+            'estado' => $cliente->estatus ?: 'Activo',
+            'permisos' => [],
+            'area_id' => 0,
+            'area' => [
+                'id' => 0,
+                'codigo' => 'CLIENTE',
+                'numero' => '00',
+                'nombre' => 'CLIENTE',
+            ],
+            'cliente' => [
+                'id' => $cliente->id,
+                'nombre_comercial' => $cliente->nombre_comercial,
+                'razon_social' => $cliente->razon_social,
+                'rfc' => $cliente->rfc,
+                'contacto_nombre' => $cliente->contacto_nombre,
+                'ciudad' => $cliente->ciudad,
+                'estatus' => $cliente->estatus ?: 'Activo',
+            ],
+        ];
+    }
+
+    private function findUserByEmail(string $email): ?object
+    {
+        return User::query()
+            ->leftJoin('areas as area', 'area.id', '=', 'users.area_id')
+            ->select([
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.password',
+                'users.area_id',
+                'users.rol',
+                'users.rol_nombre',
+                'users.telefono',
+                'users.puesto',
+                'users.estado',
+                'users.permisos',
+                'area.codigo as area_codigo',
+                'area.numero as area_numero',
+                'area.nombre as area_nombre',
+            ])
+            ->where('users.email', $email)
+            ->first();
     }
 
     private function normalizePermissions(mixed $permissions): array
