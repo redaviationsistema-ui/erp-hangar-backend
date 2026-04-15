@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $numero_serie
  * @property string|null $estado
  * @property string|null $notas
+ * @property-read int|null $motores_count
  */
 class Aeronave extends Model
 {
