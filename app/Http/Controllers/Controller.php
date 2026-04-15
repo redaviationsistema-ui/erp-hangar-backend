@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -137,6 +138,24 @@ abstract class Controller
         return $query->where($column, 'like', $term . '%');
     }
 
+    protected function cacheOrFetch(string $cacheKey, \DateTimeInterface $ttl, callable $callback): mixed
+    {
+        if (! app()->environment('production')) {
+            return $callback();
+        }
+
+        return Cache::remember($cacheKey, $ttl, $callback);
+    }
+
+    protected function cacheForeverOrFetch(string $cacheKey, callable $callback): mixed
+    {
+        if (! app()->environment('production')) {
+            return $callback();
+        }
+
+        return Cache::rememberForever($cacheKey, $callback);
+    }
+
     protected function canManageInventoryPricing(Request $request): bool
     {
         return in_array($request->user()?->rol, ['admin', 'supervisor', 'administracion'], true);
@@ -156,6 +175,22 @@ abstract class Controller
     {
         return $request->user()?->rol === 'administracion'
             || $this->normalizedUserEmail($request) === 'administracion@redaviation.com';
+    }
+
+    protected function isExclusiveAdministracionEmail(Request $request): bool
+    {
+        return $this->normalizedUserEmail($request) === 'administracion@redaviation.com';
+    }
+
+    protected function authorizeExclusiveAdministracionEmail(
+        Request $request,
+        string $message = 'Solo administracion@redaviation.com puede modificar este registro.',
+    ): void {
+        if ($this->isExclusiveAdministracionEmail($request)) {
+            return;
+        }
+
+        throw new HttpException(403, $message);
     }
 
     protected function isAdminGeneralUser(Request $request): bool

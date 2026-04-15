@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance.log'),
+            'level' => env('LOG_PERFORMANCE_LEVEL', 'warning'),
+            'days' => env('LOG_PERFORMANCE_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

@@ -3,7 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $nombre
+ * @property string $codigo
+ * @property string $numero
+ */
 class Area extends Model
 {
     protected $fillable = [
@@ -12,17 +19,17 @@ class Area extends Model
         'numero',
     ];
 
-    public function ordenes()
+    public function ordenes(): HasMany
     {
         return $this->hasMany(Orden::class);
     }
 
-    public function usuarios()
+    public function usuarios(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
-    public function ataTaskTemplates()
+    public function ataTaskTemplates(): HasMany
     {
         return $this->hasMany(AtaTaskTemplate::class);
     }

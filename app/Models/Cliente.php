@@ -4,8 +4,31 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property int $id
+ * @property string $nombre_comercial
+ * @property string $razon_social
+ * @property string $rfc
+ * @property string $contacto_nombre
+ * @property string $email
+ * @property string $password
+ * @property string $contrasena_portal
+ * @property int $ot_asignada_id
+ * @property string $telefono
+ * @property string $ciudad
+ * @property string $estatus
+ * @property string $notas
+ * @property Orden $otAsignadaOrden
+ * @method static Builder query()
+ * @method static Builder withClienteOrders()
+ * @method $this fill(array $attributes)
+ * @method bool save(array $options = [])
+ * @method $this load(mixed ...$relations)
+ * @method bool delete()
+ */
 class Cliente extends Authenticatable
 {
     use HasApiTokens;
@@ -43,9 +66,18 @@ class Cliente extends Authenticatable
         return $this->belongsTo(Orden::class, 'ot_asignada_id');
     }
 
+    public function ordenesAsignadas()
+    {
+        return $this->belongsToMany(Orden::class, 'cliente_orden', 'cliente_id', 'orden_id');
+    }
+
     public function scopeWithClienteOrders(Builder $query): Builder
     {
-        return $query->with(['otAsignadaOrden.area']);
+        return $query->with([
+            'otAsignadaOrden:id,area_id,folio,estado,descripcion,matricula',
+            'otAsignadaOrden.area:id,nombre,codigo',
+            'ordenesAsignadas:id',
+        ]);
     }
 
     public function relatedOrderNames(): array
@@ -59,9 +91,20 @@ class Cliente extends Authenticatable
     public function relatedOrdersQuery(): Builder
     {
         $names = $this->relatedOrderNames();
+        $orderIdsQuery = DB::table('cliente_orden')
+            ->select('orden_id')
+            ->where('cliente_id', $this->id);
+
+        if (! empty($names)) {
+            $orderIdsQuery = $orderIdsQuery->union(
+                DB::table('ordenes')
+                    ->selectRaw('id as orden_id')
+                    ->whereIn('cliente', $names)
+            );
+        }
 
         return Orden::query()
             ->with(['area:id,nombre,codigo'])
-            ->when(! empty($names), fn (Builder $query) => $query->whereIn('cliente', $names), fn (Builder $query) => $query->whereRaw('1 = 0'));
+            ->whereIn('ordenes.id', $orderIdsQuery);
     }
 }

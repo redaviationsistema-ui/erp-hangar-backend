@@ -12,7 +12,7 @@ class DiscrepanciaController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addMinutes(5), function () use ($request) {
+        $payload = $this->cacheOrFetch($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addMinutes(5), function () use ($request) {
             $items = $this->applyOrderAreaScope($request, Discrepancia::query())
                 ->select([
                     'id',

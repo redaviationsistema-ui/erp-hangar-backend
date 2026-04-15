@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TipoOrden extends Model
 {
@@ -13,7 +14,7 @@ class TipoOrden extends Model
         'codigo',
     ];
 
-    public function ordenes()
+    public function ordenes(): HasMany
     {
         return $this->hasMany(Orden::class, 'tipo_id');
     }

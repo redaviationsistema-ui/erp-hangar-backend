@@ -13,7 +13,7 @@ class AreaController extends Controller
     {
         $request = request();
 
-        $payload = Cache::remember($this->cacheKey('index', $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($request) {
+        $payload = $this->cacheOrFetch($this->cacheKey('index', $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($request) {
             $query = Area::query()
                 ->select(['id', 'nombre', 'codigo', 'numero', 'created_at', 'updated_at'])
                 ->withCount('ordenes')
@@ -58,7 +58,7 @@ class AreaController extends Controller
     {
         $this->authorizeAreaId(request(), $area->id);
 
-        $payload = Cache::remember($this->cacheKey('show', ['id' => $area->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($area) {
+        $payload = $this->cacheOrFetch($this->cacheKey('show', ['id' => $area->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($area) {
             return [
                 'success' => true,
                 'data' => tap($area->load([

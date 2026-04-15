@@ -111,7 +111,7 @@ class ManualController extends Controller
 
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', $request->query()), now()->addMinutes(5), function () use ($request) {
+        $payload = $this->cacheOrFetch($this->cacheKey('index', $request->query()), now()->addMinutes(5), function () use ($request) {
             $manuales = Manual::query()
                 ->select([
                     'id',
@@ -201,7 +201,7 @@ class ManualController extends Controller
 
     public function show(Manual $manuale)
     {
-        $payload = Cache::remember($this->cacheKey('show', ['id' => $manuale->id]), now()->addMinutes(5), function () use ($manuale) {
+        $payload = $this->cacheOrFetch($this->cacheKey('show', ['id' => $manuale->id]), now()->addMinutes(5), function () use ($manuale) {
             $manuale->load([
                 'aeronave:id,matricula,modelo',
                 'chunks' => fn ($query) => $query

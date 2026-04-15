@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AtaChapter extends Model
 {
@@ -11,17 +12,17 @@ class AtaChapter extends Model
         'descripcion',
     ];
 
-    public function subchapters()
+    public function subchapters(): HasMany
     {
         return $this->hasMany(AtaSubchapter::class);
     }
 
-    public function ordenes()
+    public function ordenes(): HasMany
     {
         return $this->hasMany(Orden::class);
     }
 
-    public function manualChunks()
+    public function manualChunks(): HasMany
     {
         return $this->hasMany(ManualChunk::class, 'ata_chapter_id');
     }

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AtaSubchapter extends Model
 {
@@ -16,22 +18,22 @@ class AtaSubchapter extends Model
         'tipo_mantenimiento',
     ];
 
-    public function chapter()
+    public function chapter(): BelongsTo
     {
         return $this->belongsTo(AtaChapter::class, 'ata_chapter_id');
     }
 
-    public function tasks()
+    public function tasks(): HasMany
     {
         return $this->hasMany(AtaTaskTemplate::class, 'ata_subchapter_id');
     }
 
-    public function ordenes()
+    public function ordenes(): HasMany
     {
         return $this->hasMany(Orden::class, 'ata_subchapter_id');
     }
 
-    public function manualChunks()
+    public function manualChunks(): HasMany
     {
         return $this->hasMany(ManualChunk::class, 'ata_subchapter_id');
     }

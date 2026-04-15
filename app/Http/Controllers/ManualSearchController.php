@@ -24,7 +24,7 @@ class ManualSearchController extends Controller
             'limit' => 'sometimes|nullable|integer|min:1|max:25',
         ]);
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('search', $data),
             now()->addMinutes(10),
             fn () => [
@@ -54,7 +54,7 @@ class ManualSearchController extends Controller
             $filters['ata_chapter_id'] = $orden->ata_chapter_id;
         }
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('discrepancy', [
                 'discrepancia_id' => $discrepancia->id,
                 'descripcion' => $discrepancia->descripcion,

@@ -4,35 +4,58 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ClienteResource;
 use App\Models\Cliente;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ClienteController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $this->authorizeManagement($request);
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('index', $request->query()),
-            now()->addMinutes(5),
+            Carbon::now()->addMinutes(5),
             function () use ($request) {
                 $perPage = min(max((int) $request->integer('per_page', 20), 1), 100);
                 $search = trim((string) $request->input('search', ''));
+                $searchLower = mb_strtolower($search, 'UTF-8');
 
                 $query = Cliente::query()
-                    ->withClienteOrders()
+                    ->select([
+                        'id',
+                        'nombre_comercial',
+                        'razon_social',
+                        'rfc',
+                        'contacto_nombre',
+                        'email',
+                        'telefono',
+                        'ciudad',
+                        'estatus',
+                        'notas',
+                        'ot_asignada_id',
+                        'contrasena_portal',
+                        'created_at',
+                        'updated_at',
+                    ])
+                    ->withCount('ordenesAsignadas')
+                    ->with([
+                        'otAsignadaOrden:id,folio',
+                    ])
                     ->orderBy('nombre_comercial');
 
                 if ($search !== '') {
-                    $query->where(function ($builder) use ($search) {
+                    $query->where(function ($builder) use ($searchLower) {
                         $builder
-                            ->where('nombre_comercial', 'like', "%{$search}%")
-                            ->orWhere('razon_social', 'like', "%{$search}%")
-                            ->orWhere('rfc', 'like', "%{$search}%")
-                            ->orWhere('contacto_nombre', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
+                            ->whereRaw('lower(nombre_comercial) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(razon_social) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(rfc) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(contacto_nombre) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(email) like ?', ["%{$searchLower}%"]);
                     });
                 }
 
@@ -40,16 +63,19 @@ class ClienteController extends Controller
 
                 return [
                     'success' => true,
-                    'data' => ClienteResource::collection($clientes->getCollection())->resolve(),
+                    'data' => array_map(
+                        fn (Cliente $cliente): array => $this->transformCliente($cliente, $request),
+                        $clientes->getCollection()->all()
+                    ),
                     'meta' => $this->meta($clientes),
                 ];
             }
         );
 
-        return response()->json($payload);
+        return new JsonResponse($payload);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $this->authorizeManagement($request);
 
@@ -67,43 +93,76 @@ class ClienteController extends Controller
             'notas' => 'nullable|string',
             'ot_id' => 'nullable|integer|exists:ordenes,id',
             'ot_asignada_id' => 'nullable|integer|exists:ordenes,id',
+            'ot_ids' => 'nullable|array',
+            'ot_ids.*' => 'integer|exists:ordenes,id',
+            'ot_asignadas_ids' => 'nullable|array',
+            'ot_asignadas_ids.*' => 'integer|exists:ordenes,id',
         ]);
 
-        $cliente = Cliente::create([
+        $clienteData = [
             ...$data,
             'password' => $data['password'] ?? $data['contrasena'] ?? null,
             'contrasena_portal' => $data['contrasena'] ?? $data['password'] ?? null,
             'ot_asignada_id' => $data['ot_asignada_id'] ?? $data['ot_id'] ?? null,
             'estatus' => $data['estatus'] ?? 'Activo',
-        ]);
+        ];
 
-        $cliente->load('otAsignadaOrden.area');
+        // Remove the ot_ids from clienteData since it's not a direct column
+        unset($clienteData['ot_ids']);
+        unset($clienteData['ot_asignadas_ids']);
+
+        $cliente = new Cliente();
+        $cliente->fill($clienteData);
+        $cliente->save();
+
+        // Sync multiple OTs
+        $otIds = $data['ot_ids'] ?? $data['ot_asignadas_ids'] ?? [];
+        if (!empty($otIds)) {
+            $cliente->ordenesAsignadas()->sync($otIds);
+        }
+
+        $cliente->load('otAsignadaOrden.area', 'ordenesAsignadas');
         $this->bustCache();
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Cliente creado correctamente.',
-            'data' => (new ClienteResource($cliente))->resolve(),
+            'data' => $this->transformCliente($cliente, $request),
         ], 201);
     }
 
-    public function show(Request $request, Cliente $cliente)
+    public function show(Request $request, Cliente $cliente): JsonResponse
     {
         $this->authorizeManagement($request);
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('show', ['id' => $cliente->id]),
-            now()->addMinutes(5),
-            fn () => [
-                'success' => true,
-                'data' => (new ClienteResource($cliente->load('otAsignadaOrden.area')))->resolve(),
-            ]
+            Carbon::now()->addMinutes(5),
+            function () use ($cliente, $request) {
+                $previewOrders = $cliente->ordenesAsignadas()
+                    ->select(['ordenes.id', 'ordenes.area_id', 'ordenes.folio', 'ordenes.estado', 'ordenes.descripcion', 'ordenes.matricula'])
+                    ->with('area:id,nombre,codigo')
+                    ->latest('ordenes.id')
+                    ->limit(10)
+                    ->get();
+
+                $cliente->load([
+                    'otAsignadaOrden:id,area_id,folio,estado,descripcion,matricula',
+                    'otAsignadaOrden.area:id,nombre,codigo',
+                ])->loadCount('ordenesAsignadas');
+                $cliente->setRelation('ordenesAsignadasPreview', $previewOrders);
+
+                return [
+                    'success' => true,
+                    'data' => $this->transformCliente($cliente, $request),
+                ];
+            }
         );
 
-        return response()->json($payload);
+        return new JsonResponse($payload);
     }
 
-    public function update(Request $request, Cliente $cliente)
+    public function update(Request $request, Cliente $cliente): JsonResponse
     {
         $this->authorizeManagement($request);
 
@@ -121,6 +180,10 @@ class ClienteController extends Controller
             'notas' => 'sometimes|nullable|string',
             'ot_id' => 'sometimes|nullable|integer|exists:ordenes,id',
             'ot_asignada_id' => 'sometimes|nullable|integer|exists:ordenes,id',
+            'ot_ids' => 'sometimes|nullable|array',
+            'ot_ids.*' => 'integer|exists:ordenes,id',
+            'ot_asignadas_ids' => 'sometimes|nullable|array',
+            'ot_asignadas_ids.*' => 'integer|exists:ordenes,id',
         ]);
 
         $payload = $data;
@@ -135,28 +198,45 @@ class ClienteController extends Controller
             $payload['ot_asignada_id'] = $data['ot_asignada_id'] ?? $data['ot_id'] ?? null;
         }
 
-        $cliente->update($payload);
-        $cliente->load('otAsignadaOrden.area');
+        // Remove the ot_ids from payload since it's not a direct column
+        unset($payload['ot_ids']);
+        unset($payload['ot_asignadas_ids']);
+
+        $cliente->fill($payload);
+        $cliente->save();
+
+        // Sync multiple OTs if provided
+        if (array_key_exists('ot_ids', $data) || array_key_exists('ot_asignadas_ids', $data)) {
+            $otIds = $data['ot_ids'] ?? $data['ot_asignadas_ids'] ?? [];
+            $cliente->ordenesAsignadas()->sync($otIds);
+        }
+
+        $cliente->load('otAsignadaOrden.area', 'ordenesAsignadas');
         $this->bustCache();
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Cliente actualizado correctamente.',
-            'data' => (new ClienteResource($cliente))->resolve(),
+            'data' => $this->transformCliente($cliente, $request),
         ]);
     }
 
-    public function destroy(Request $request, Cliente $cliente)
+    public function destroy(Request $request, Cliente $cliente): JsonResponse
     {
         $this->authorizeManagement($request);
 
         $cliente->delete();
         $this->bustCache();
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Cliente eliminado correctamente.',
         ]);
+    }
+
+    private function transformCliente(Cliente $cliente, Request $request): array
+    {
+        return (new ClienteResource($cliente))->toArray($request);
     }
 
     private function authorizeManagement(Request $request): void
@@ -173,7 +253,9 @@ class ClienteController extends Controller
             || in_array('usuarios_crud', $permissions, true)
             || in_array('manage_users', $permissions, true);
 
-        abort_unless($allowed, 403, 'No tienes permisos para gestionar clientes.');
+        if (! $allowed) {
+            throw new HttpException(403, 'No tienes permisos para gestionar clientes.');
+        }
     }
 
     private function normalizePermissions(mixed $permissions): array
@@ -207,7 +289,7 @@ class ClienteController extends Controller
     {
         ksort($params);
 
-        return 'clientes:' . Cache::get('clientes_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+        return 'clientes:' . Cache::get('clientes_cache_version', 2) . ':' . $action . ':' . md5(json_encode($params));
     }
 
     private function bustCache(): void

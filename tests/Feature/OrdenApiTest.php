@@ -160,22 +160,12 @@ class OrdenApiTest extends TestCase
                     'foto_path' => 'talleres-externos/evidencia.jpg',
                     'recepcion' => now()->toDateString(),
                     'trabajo_realizado' => 'Revision externa documentada',
-                    'costo' => 500,
-                    'precio_venta' => 700,
-                ],
-            ],
-            'ndt' => [
-                [
-                    'item' => '01',
-                    'tipo_prueba' => 'Liquidos penetrantes',
-                    'recepcion' => now()->toDateString(),
-                    'costo_total' => 200,
-                    'precio_venta' => 280,
                 ],
             ],
         ])->assertCreated();
 
         $ordenId = $ordenResponse->json('data.id');
+        $tallerId = $ordenResponse->json('data.talleres_externos.0.id');
 
         $refaccionId = $this->postJson('/api/v1/refacciones', [
             'orden_id' => $ordenId,
@@ -209,6 +199,14 @@ class OrdenApiTest extends TestCase
             'costo_total' => 300,
         ])->assertOk();
 
+        $this->putJson('/api/v1/ordenes/' . $ordenId, [
+            'miscelanea_costo_total' => 150,
+        ])->assertOk();
+
+        $this->putJson('/api/v1/talleres/' . $tallerId, [
+            'costo' => 500,
+        ])->assertOk();
+
         $this->authenticateAsUser('administradoror@redaviation.com');
 
         $this->putJson('/api/v1/refacciones/' . $refaccionId, [
@@ -217,6 +215,18 @@ class OrdenApiTest extends TestCase
 
         $this->putJson('/api/v1/consumibles/' . $consumibleId, [
             'precio_venta' => 450,
+        ])->assertOk();
+
+        $this->authenticateAsUser('administracion@redaviation.com');
+
+        $this->putJson('/api/v1/ordenes/' . $ordenId, [
+            'miscelanea_precio_venta' => 240,
+        ])->assertOk();
+
+        $this->authenticateAsUser('administradoror@redaviation.com');
+
+        $this->putJson('/api/v1/talleres/' . $tallerId, [
+            'precio_venta' => 700,
         ])->assertOk();
 
         $this->authenticateAsUser($user);
@@ -230,19 +240,97 @@ class OrdenApiTest extends TestCase
             ->assertJsonPath('data.refacciones_registros', 1)
             ->assertJsonPath('data.consumibles_registros', 1)
             ->assertJsonPath('data.talleres_registros', 1)
-            ->assertJsonPath('data.ndt_registros', 1)
+            ->assertJsonPath('data.ndt_registros', 0)
             ->assertJsonPath('data.horas_hombre', 3.5)
             ->assertJsonPath('data.costo_refacciones', 1250)
             ->assertJsonPath('data.costo_consumibles', 300)
             ->assertJsonPath('data.costo_talleres', 500)
-            ->assertJsonPath('data.costo_total', 2050)
-            ->assertJsonPath('data.venta_total', 3030)
+            ->assertJsonPath('data.costo_miscelanea', 150)
+            ->assertJsonPath('data.costo_total', 2200)
+            ->assertJsonPath('data.venta_total', 2990)
             ->assertJsonPath('data.por_facturar', 1)
-            ->assertJsonPath('data.por_cobrar_monto', 3030)
+            ->assertJsonPath('data.por_cobrar_monto', 2990)
             ->assertJsonPath('data.proveedores', 1)
             ->assertJsonPath('data.top_cliente', 'Cliente Resumen')
             ->assertJsonPath('data.top_matricula', 'XA-ADM')
-            ->assertJsonPath('data.top_area', 'QADM');
+            ->assertJsonPath('data.top_area', 'QADM')
+            ->assertJsonPath('data.top_ots.0.folio', $ordenResponse->json('data.folio'))
+            ->assertJsonPath('data.top_ots.0.costo', 2200)
+            ->assertJsonPath('data.top_ots.0.venta', 2990)
+            ->assertJsonPath('data.top_ots.0.margen', 790);
+    }
+
+    public function test_it_returns_task_hours_summary_and_restricts_miscelanea_admin_fields(): void
+    {
+        $this->seed();
+
+        $area = Area::query()->firstOrCreate(
+            ['codigo' => 'QADM'],
+            ['nombre' => 'QA Horas', 'numero' => '99']
+        );
+        $tipo = TipoOrden::query()->firstOrCreate(
+            ['codigo' => 'QADM'],
+            ['nombre' => 'QA Horas']
+        );
+        $user = User::create([
+            'name' => 'Tecnico HH',
+            'email' => 'tecnico-hh@redaviation.com',
+            'password' => 'secret123',
+            'area_id' => $area->id,
+            'rol' => 'tecnico',
+        ]);
+
+        $this->authenticateAsUser($user);
+
+        $ordenId = $this->postJson('/api/v1/ordenes', [
+            'area_id' => $area->id,
+            'tipo_id' => $tipo->id,
+            'user_id' => $user->id,
+            'descripcion' => 'OT con resumen HH para miscelanea',
+            'estado' => 'abierta',
+            'generar_tareas_ata' => false,
+            'tecnico_responsable' => 'Tec. Responsable Base',
+            'tareas' => [
+                [
+                    'titulo' => 'Inspeccion inicial',
+                    'tecnico' => 'Tec. Omar',
+                    'tiempo_estimado_min' => 90,
+                ],
+                [
+                    'titulo' => 'Ajuste final',
+                    'tecnico' => 'Tec. Omar',
+                    'tiempo_estimado_min' => 30,
+                ],
+                [
+                    'titulo' => 'Prueba funcional',
+                    'tecnico' => 'Tec. Kevin',
+                    'tiempo_estimado_min' => 60,
+                ],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->getJson('/api/v1/ordenes/' . $ordenId)
+            ->assertOk()
+            ->assertJsonPath('data.hh_tareas_total', 3)
+            ->assertJsonPath('data.hh_tecnico_resumen', 'Tec. Omar (2.0 h) | Tec. Kevin (1.0 h)')
+            ->assertJsonPath('data.hh_tecnicos.0.tecnico', 'Tec. Omar')
+            ->assertJsonPath('data.hh_tecnicos.0.horas', 2);
+
+        $this->putJson('/api/v1/ordenes/' . $ordenId, [
+            'miscelanea_costo_total' => 1500,
+            'miscelanea_observaciones_admin' => 'Intento sin permiso',
+        ])->assertForbidden();
+
+        $this->authenticateAsUser('administracion@redaviation.com');
+
+        $this->putJson('/api/v1/ordenes/' . $ordenId, [
+            'miscelanea_costo_total' => 1500,
+            'miscelanea_precio_venta' => 2100,
+            'miscelanea_observaciones_admin' => 'Captura autorizada',
+        ])->assertOk()
+            ->assertJsonPath('data.miscelanea_costo_total', '1500.00')
+            ->assertJsonPath('data.miscelanea_precio_venta', '2100.00')
+            ->assertJsonPath('data.miscelanea_observaciones_admin', 'Captura autorizada');
     }
 
     public function test_it_creates_an_order_linked_to_a_motor(): void

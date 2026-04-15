@@ -15,7 +15,7 @@ class UsuarioController extends Controller
     {
         $this->authorizeManagement($request, 'usuarios');
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('index', $request->query()),
             now()->addMinutes(5),
             function () use ($request) {
@@ -23,20 +23,36 @@ class UsuarioController extends Controller
                 $search = trim((string) $request->input('search', ''));
 
                 $query = User::query()
+                    ->select([
+                        'id',
+                        'name',
+                        'email',
+                        'telefono',
+                        'puesto',
+                        'rol',
+                        'rol_nombre',
+                        'area_id',
+                        'estado',
+                        'permisos',
+                        'created_at',
+                        'updated_at',
+                    ])
                     ->with('area:id,codigo,nombre')
                     ->orderBy('name');
 
                 if ($search !== '') {
-                    $query->where(function ($builder) use ($search) {
+                    $searchLower = mb_strtolower($search, 'UTF-8');
+
+                    $query->where(function ($builder) use ($searchLower) {
                         $builder
-                            ->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
-                            ->orWhere('rol', 'like', "%{$search}%")
-                            ->orWhere('rol_nombre', 'like', "%{$search}%")
-                            ->orWhereHas('area', function ($areaQuery) use ($search) {
+                            ->whereRaw('lower(name) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(email) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(rol) like ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('lower(rol_nombre) like ?', ["%{$searchLower}%"])
+                            ->orWhereHas('area', function ($areaQuery) use ($searchLower) {
                                 $areaQuery
-                                    ->where('codigo', 'like', "%{$search}%")
-                                    ->orWhere('nombre', 'like', "%{$search}%");
+                                    ->whereRaw('lower(codigo) like ?', ["%{$searchLower}%"])
+                                    ->orWhereRaw('lower(nombre) like ?', ["%{$searchLower}%"]);
                             });
                     });
                 }
@@ -91,7 +107,7 @@ class UsuarioController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Usuario creado correctamente.',
-            'data' => (new UsuarioResource($usuario))->resolve(),
+            'data' => UsuarioResource::make($usuario)->resolve(),
         ], 201);
     }
 
@@ -99,15 +115,15 @@ class UsuarioController extends Controller
     {
         $this->authorizeManagement($request, 'usuarios');
 
-        $payload = Cache::remember(
-            $this->cacheKey('show', ['id' => $usuario->id]),
+        $payload = $this->cacheOrFetch(
+            $this->cacheKey('show', ['id' => $usuario->getKey()]),
             now()->addMinutes(5),
             function () use ($usuario) {
                 $usuario->load('area:id,codigo,nombre');
 
                 return [
                     'success' => true,
-                    'data' => (new UsuarioResource($usuario))->resolve(),
+                    'data' => UsuarioResource::make($usuario)->resolve(),
                 ];
             }
         );
@@ -121,7 +137,7 @@ class UsuarioController extends Controller
 
         $data = $request->validate([
             'nombre' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|max:255|unique:users,email,' . $usuario->id,
+            'email' => 'sometimes|email|max:255|unique:users,email,' . $usuario->getKey(),
             'telefono' => 'sometimes|nullable|string|max:50',
             'puesto' => 'sometimes|nullable|string|max:255',
             'rol' => 'sometimes|string|max:50',
@@ -169,7 +185,7 @@ class UsuarioController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Usuario actualizado correctamente.',
-            'data' => (new UsuarioResource($usuario))->resolve(),
+            'data' => UsuarioResource::make($usuario)->resolve(),
         ]);
     }
 

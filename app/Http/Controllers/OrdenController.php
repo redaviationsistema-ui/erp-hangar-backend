@@ -25,7 +25,7 @@ class OrdenController extends Controller
 
     public function index(Request $request)
     {
-        $payload = Cache::rememberForever($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), function () use ($request) {
+        $payload = $this->cacheForeverOrFetch($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), function () use ($request) {
             $fastMode = ! $request->has('fast') || $request->boolean('fast');
             $includeAta = $request->boolean('include_ata');
             $includeCounts = $request->boolean('include_counts');
@@ -33,14 +33,23 @@ class OrdenController extends Controller
                 ->leftJoin('areas as area', 'area.id', '=', 'ordenes.area_id')
                 ->leftJoin('tipo_ordenes as tipo', 'tipo.id', '=', 'ordenes.tipo_id')
                 ->leftJoin('users as usuario', 'usuario.id', '=', 'ordenes.user_id')
-                ->leftJoin('motores as motor', 'motor.id', '=', 'ordenes.motor_id')
-                ->leftJoin('aeronaves as aeronave', 'aeronave.id', '=', 'motor.aeronave_id')
-                ->select($this->summaryColumnsWithJoins($includeAta));
+                ->select($this->summaryColumnsWithJoins($includeAta))
+                ->with([
+                    'area:id,codigo,numero,nombre',
+                    'tipo:id,codigo,nombre',
+                    'usuario:id,name,email',
+                    'motor:id,aeronave_id,posicion,fabricante,modelo,numero_parte,numero_serie,tiempo_total,ciclos_totales,estado',
+                    'motor.aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado',
+                ]);
 
             if ($includeAta) {
                 $query
                     ->leftJoin('ata_chapters as ata_chapter', 'ata_chapter.id', '=', 'ordenes.ata_chapter_id')
-                    ->leftJoin('ata_subchapters as ata_subchapter', 'ata_subchapter.id', '=', 'ordenes.ata_subchapter_id');
+                    ->leftJoin('ata_subchapters as ata_subchapter', 'ata_subchapter.id', '=', 'ordenes.ata_subchapter_id')
+                    ->with([
+                        'ataChapter:id,codigo,descripcion',
+                        'ataSubchapter:id,ata_chapter_id,codigo,descripcion,tipo_mantenimiento,intervalo_horas,intervalo_ciclos,intervalo_dias',
+                    ]);
             }
 
             if ($includeCounts) {
@@ -51,7 +60,7 @@ class OrdenController extends Controller
                 ->when($request->filled('estado'), fn ($q) => $q->where('ordenes.estado', $request->string('estado')))
                 ->when($request->filled('tipo_id'), fn ($q) => $q->where('ordenes.tipo_id', $request->integer('tipo_id')))
                 ->when($request->filled('motor_id'), fn ($q) => $q->where('ordenes.motor_id', $request->integer('motor_id')))
-                ->when($request->filled('aeronave_id'), fn ($q) => $q->where('motor.aeronave_id', $request->integer('aeronave_id')))
+                ->when($request->filled('aeronave_id'), fn ($q) => $q->whereHas('motor', fn ($motor) => $motor->where('aeronave_id', $request->integer('aeronave_id'))))
                 ->when($request->filled('ata_chapter_id'), fn ($q) => $q->where('ordenes.ata_chapter_id', $request->integer('ata_chapter_id')))
                 ->when($request->filled('ata_subchapter_id'), fn ($q) => $q->where('ordenes.ata_subchapter_id', $request->integer('ata_subchapter_id')))
                 ->when($request->filled('folio'), fn ($q) => $this->applyIndexedPrefixSearch($q, 'ordenes.folio', $request->string('folio')))
@@ -89,7 +98,7 @@ class OrdenController extends Controller
 
     public function examples()
     {
-        $payload = Cache::remember($this->cacheKey('examples'), now()->addMinutes(5), function () {
+        $payload = $this->cacheOrFetch($this->cacheKey('examples'), now()->addMinutes(5), function () {
             $ordenes = Orden::query()
                 ->select($this->summaryColumns())
                 ->withCount($this->countRelations())
@@ -115,6 +124,7 @@ class OrdenController extends Controller
     public function store(StoreOrdenRequest $request)
     {
         abort_if($this->isClienteUser($request), 403, 'Los clientes solo pueden consultar sus ordenes de trabajo.');
+        $this->authorizeMiscelaneaAdministrativePayload($request);
 
         $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
             'area_id',
@@ -219,7 +229,7 @@ class OrdenController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Orden creada correctamente.',
-            'data' => new OrdenResource($orden),
+            'data' => OrdenResource::make($orden),
         ], 201);
     }
 
@@ -228,13 +238,22 @@ class OrdenController extends Controller
         $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
-        $payload = Cache::remember($this->cacheKey('show', ['id' => $ordene->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene) {
-            $ordene->load($this->showRelations())->loadCount($this->countRelations());
+        $includeCounts = request()->boolean('include_counts');
+
+        $payload = $this->cacheOrFetch($this->cacheKey('show', ['id' => $ordene->id, 'include_counts' => $includeCounts] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene, $includeCounts) {
+            $ordene->load($this->showRelations());
+
+            if ($includeCounts) {
+                $ordene->loadCount($this->countRelations());
+            }
 
             return [
                 'success' => true,
                 'message' => 'Orden encontrada.',
-                'data' => (new OrdenResource($ordene))->resolve(),
+                'data' => OrdenResource::make($ordene)->resolve(),
+                'meta' => [
+                    'include_counts' => $includeCounts,
+                ],
             ];
         });
 
@@ -245,6 +264,7 @@ class OrdenController extends Controller
     {
         abort_if($this->isClienteUser($request), 403, 'Los clientes solo pueden consultar sus ordenes de trabajo.');
         $this->authorizeModelArea($request, $ordene);
+        $this->authorizeMiscelaneaAdministrativePayload($request);
         $this->authorizeNestedOperationalPayload($request, $request->validated('tareas', []), [
             'area_id',
             'ata_task_template_id',
@@ -341,7 +361,7 @@ class OrdenController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Orden actualizada correctamente.',
-            'data' => new OrdenResource($orden),
+            'data' => OrdenResource::make($orden),
         ]);
     }
 
@@ -363,11 +383,11 @@ class OrdenController extends Controller
         $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
-        $payload = Cache::remember($this->cacheKey('completo', ['id' => $ordene->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene) {
+        $payload = $this->cacheOrFetch($this->cacheKey('completo', ['id' => $ordene->id] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene) {
             return [
                 'success' => true,
                 'message' => 'Orden completa obtenida.',
-                'data' => (new OrdenResource($ordene->load($this->detailRelations())))->resolve(),
+                'data' => OrdenResource::make($ordene->load($this->detailRelations()))->resolve(),
             ];
         });
 
@@ -379,7 +399,7 @@ class OrdenController extends Controller
         $this->authorizeClientOrderAccess(request(), $ordene);
         $this->authorizeModelArea(request(), $ordene);
 
-        $payload = Cache::remember(
+        $payload = $this->cacheOrFetch(
             $this->cacheKey('trazabilidad', ['id' => $ordene->id] + $this->areaCacheContext(request())),
             now()->addMinutes(5),
             function () use ($ordene) {
@@ -498,7 +518,6 @@ class OrdenController extends Controller
             'ordenes.cliente',
             'ordenes.matricula',
             'ordenes.aeronave_modelo',
-            'ordenes.aeronave_serie',
             'ordenes.tiempo_total',
             'ordenes.ciclos_totales',
             'ordenes.descripcion',
@@ -526,21 +545,6 @@ class OrdenController extends Controller
             'tipo.nombre as tipo_nombre',
             'usuario.name as usuario_nombre',
             'usuario.email as usuario_email',
-            'motor.aeronave_id as motor_aeronave_id',
-            'motor.posicion as motor_posicion',
-            'motor.fabricante as motor_fabricante',
-            'motor.modelo as motor_modelo',
-            'motor.numero_parte as motor_numero_parte',
-            'motor.numero_serie as motor_numero_serie',
-            'motor.tiempo_total as motor_tiempo_total',
-            'motor.ciclos_totales as motor_ciclos_totales',
-            'motor.estado as motor_estado',
-            'aeronave.cliente as aeronave_cliente',
-            'aeronave.matricula as aeronave_matricula',
-            'aeronave.fabricante as aeronave_fabricante',
-            'aeronave.modelo as aeronave_modelo_rel',
-            'aeronave.numero_serie as aeronave_numero_serie_rel',
-            'aeronave.estado as aeronave_estado',
         ];
 
         if (! $withAta) {
@@ -649,6 +653,28 @@ class OrdenController extends Controller
             'usuario:id,name,email',
             'ataChapter:id,codigo,descripcion',
             'ataSubchapter:id,ata_chapter_id,codigo,descripcion,tipo_mantenimiento,intervalo_horas,intervalo_ciclos,intervalo_dias',
+            'tareas' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'orden_id',
+                    'area_id',
+                    'ata_task_template_id',
+                    'titulo',
+                    'descripcion',
+                    'orden',
+                    'tipo',
+                    'prioridad',
+                    'tiempo_estimado_min',
+                    'estado',
+                    'tecnico',
+                    'foto_path',
+                    'created_at',
+                    'updated_at',
+                ])
+                ->orderBy('orden')
+                ->orderBy('id'),
+            'tareas.plantillaAta:id,ata_subchapter_id,area_id,titulo,descripcion,tipo,tiempo_estimado_min,prioridad',
+            'tareas.area:id,codigo,numero,nombre',
             'motor:id,aeronave_id,posicion,fabricante,modelo,numero_parte,numero_serie,tiempo_total,ciclos_totales,estado',
             'motor.aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado',
         ];
@@ -744,40 +770,40 @@ class OrdenController extends Controller
             'inspector' => $orden->inspector,
             'fecha_inicio' => $this->dateToString($orden->fecha_inicio),
             'fecha_termino' => $this->dateToString($orden->fecha_termino),
-            'area' => $orden->area_id ? [
-                'id' => $orden->area_id,
-                'codigo' => $orden->area_codigo,
-                'numero' => $orden->area_numero,
-                'nombre' => $orden->area_nombre,
+            'area' => $orden->area ? [
+                'id' => $orden->area->id,
+                'codigo' => $orden->area->codigo,
+                'numero' => $orden->area->numero,
+                'nombre' => $orden->area->nombre,
             ] : null,
-            'tipo' => $orden->tipo_id ? [
-                'id' => $orden->tipo_id,
-                'codigo' => $orden->tipo_codigo,
-                'nombre' => $orden->tipo_nombre,
+            'tipo' => $orden->tipo ? [
+                'id' => $orden->tipo->id,
+                'codigo' => $orden->tipo->codigo,
+                'nombre' => $orden->tipo->nombre,
             ] : null,
-            'usuario' => $orden->user_id ? [
-                'id' => $orden->user_id,
-                'nombre' => $orden->usuario_nombre,
-                'email' => $orden->usuario_email,
+            'usuario' => $orden->usuario ? [
+                'id' => $orden->usuario->id,
+                'nombre' => $orden->usuario->name,
+                'email' => $orden->usuario->email,
             ] : null,
-            'motor' => $orden->motor_id ? [
-                'id' => $orden->motor_id,
-                'posicion' => $orden->motor_posicion,
-                'fabricante' => $orden->motor_fabricante,
-                'modelo' => $orden->motor_modelo,
-                'numero_parte' => $orden->motor_numero_parte,
-                'numero_serie' => $orden->motor_numero_serie,
-                'tiempo_total' => $orden->motor_tiempo_total,
-                'ciclos_totales' => $orden->motor_ciclos_totales,
-                'estado' => $orden->motor_estado,
-                'aeronave' => $orden->motor_aeronave_id ? [
-                    'id' => $orden->motor_aeronave_id,
-                    'cliente' => $orden->aeronave_cliente,
-                    'matricula' => $orden->aeronave_matricula,
-                    'fabricante' => $orden->aeronave_fabricante,
-                    'modelo' => $orden->aeronave_modelo_rel,
-                    'numero_serie' => $orden->aeronave_numero_serie_rel,
-                    'estado' => $orden->aeronave_estado,
+            'motor' => $orden->motor ? [
+                'id' => $orden->motor->id,
+                'posicion' => $orden->motor->posicion,
+                'fabricante' => $orden->motor->fabricante,
+                'modelo' => $orden->motor->modelo,
+                'numero_parte' => $orden->motor->numero_parte,
+                'numero_serie' => $orden->motor->numero_serie,
+                'tiempo_total' => $orden->motor->tiempo_total,
+                'ciclos_totales' => $orden->motor->ciclos_totales,
+                'estado' => $orden->motor->estado,
+                'aeronave' => $orden->motor->aeronave ? [
+                    'id' => $orden->motor->aeronave->id,
+                    'cliente' => $orden->motor->aeronave->cliente,
+                    'matricula' => $orden->motor->aeronave->matricula,
+                    'fabricante' => $orden->motor->aeronave->fabricante,
+                    'modelo' => $orden->motor->aeronave->modelo,
+                    'numero_serie' => $orden->motor->aeronave->numero_serie,
+                    'estado' => $orden->motor->aeronave->estado,
                 ] : null,
             ] : null,
             'created_at' => $orden->created_at,
@@ -786,19 +812,19 @@ class OrdenController extends Controller
 
         if ($includeAta) {
             $payload['ata'] = [
-                'chapter' => $orden->ata_chapter_id ? [
-                    'id' => $orden->ata_chapter_id,
-                    'codigo' => $orden->ata_chapter_codigo,
-                    'descripcion' => $orden->ata_chapter_descripcion,
+                'chapter' => $orden->ataChapter ? [
+                    'id' => $orden->ataChapter->id,
+                    'codigo' => $orden->ataChapter->codigo,
+                    'descripcion' => $orden->ataChapter->descripcion,
                 ] : null,
-                'subchapter' => $orden->ata_subchapter_id ? [
-                    'id' => $orden->ata_subchapter_id,
-                    'codigo' => $orden->ata_subchapter_codigo,
-                    'descripcion' => $orden->ata_subchapter_descripcion,
-                    'tipo_mantenimiento' => $orden->ata_subchapter_tipo_mantenimiento,
-                    'intervalo_horas' => $orden->ata_subchapter_intervalo_horas,
-                    'intervalo_ciclos' => $orden->ata_subchapter_intervalo_ciclos,
-                    'intervalo_dias' => $orden->ata_subchapter_intervalo_dias,
+                'subchapter' => $orden->ataSubchapter ? [
+                    'id' => $orden->ataSubchapter->id,
+                    'codigo' => $orden->ataSubchapter->codigo,
+                    'descripcion' => $orden->ataSubchapter->descripcion,
+                    'tipo_mantenimiento' => $orden->ataSubchapter->tipo_mantenimiento,
+                    'intervalo_horas' => $orden->ataSubchapter->intervalo_horas,
+                    'intervalo_ciclos' => $orden->ataSubchapter->intervalo_ciclos,
+                    'intervalo_dias' => $orden->ataSubchapter->intervalo_dias,
                 ] : null,
             ];
         }
@@ -822,6 +848,31 @@ class OrdenController extends Controller
         return is_object($value) && method_exists($value, 'toDateString')
             ? $value->toDateString()
             : null;
+    }
+
+    private function authorizeMiscelaneaAdministrativePayload(Request $request): void
+    {
+        foreach ([
+            'miscelanea_costo_total',
+            'miscelanea_precio_venta',
+            'miscelanea_observaciones_admin',
+        ] as $key) {
+            if (! $request->exists($key)) {
+                continue;
+            }
+
+            $value = $request->input($key);
+            $hasValue = is_string($value) ? trim($value) !== '' : $value !== null;
+
+            if ($hasValue) {
+                $this->authorizeExclusiveAdministracionEmail(
+                    $request,
+                    'Solo administracion@redaviation.com puede capturar costos y observaciones administrativas de miscelanea.',
+                );
+
+                return;
+            }
+        }
     }
 
     private function traceabilityOrderSummary(Orden $orden): array
@@ -1205,7 +1256,7 @@ class OrdenController extends Controller
     {
         ksort($params);
 
-        return 'ordenes:' . Cache::get('ordenes_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+        return 'ordenes:' . Cache::get('ordenes_cache_version', 2) . ':' . $action . ':' . md5(json_encode($params));
     }
 
     private function bustCache(): void

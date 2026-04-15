@@ -12,7 +12,7 @@ class AtaController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addMinutes(5), function () use ($request) {
+        $payload = $this->cacheOrFetch($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addMinutes(5), function () use ($request) {
             $areaId = $this->effectiveAreaId($request);
             $chapters = AtaChapter::query()
                 ->select(['id', 'codigo', 'descripcion'])
@@ -68,7 +68,7 @@ class AtaController extends Controller
         $request = request();
         $areaId = $this->effectiveAreaId($request);
 
-        $payload = Cache::remember($this->cacheKey('subchapters', ['chapter' => $chapter->id] + $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($chapter, $areaId) {
+        $payload = $this->cacheOrFetch($this->cacheKey('subchapters', ['chapter' => $chapter->id] + $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($chapter, $areaId) {
             $subchapters = $chapter->subchapters()
                 ->select([
                     'id',
@@ -116,7 +116,7 @@ class AtaController extends Controller
         $request = request();
         $areaId = $this->effectiveAreaId($request);
 
-        $payload = Cache::remember($this->cacheKey('show', ['subchapter' => $subchapter->id] + $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($subchapter, $areaId) {
+        $payload = $this->cacheOrFetch($this->cacheKey('show', ['subchapter' => $subchapter->id] + $this->areaCacheContext($request)), now()->addMinutes(5), function () use ($subchapter, $areaId) {
             $subchapter->load([
                 'chapter:id,codigo,descripcion',
                 'tasks' => fn ($query) => $query

@@ -10,51 +10,84 @@ class AeronaveController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::rememberForever($this->cacheKey('index', $request->query()), function () use ($request) {
-            $aeronaves = Aeronave::query()
-                ->select(['id', 'cliente', 'matricula', 'fabricante', 'modelo', 'numero_serie', 'estado'])
-                ->withCount('motores')
-                ->when($request->filled('matricula'), fn ($query) => $this->applyIndexedPrefixSearch($query, 'matricula', $request->string('matricula')))
-                ->orderBy('matricula')
-                ->get();
+        return response()->json($this->getAeronavesData($request));
+    }
 
-            return [
-                'success' => true,
-                'data' => $aeronaves->toArray(),
-            ];
-        });
+    private function getAeronavesData(Request $request)
+    {
+        $all = $request->boolean('all');
+        $includeCounts = $request->boolean('include_counts');
+        $perPage = max(1, min($request->integer('per_page', 25), 100));
 
-        return response()->json($payload);
+        $query = Aeronave::query()
+            ->select(['id', 'cliente', 'matricula', 'fabricante', 'modelo', 'numero_serie', 'estado'])
+            ->when($request->filled('matricula'), fn ($query) => $this->applyIndexedPrefixSearch($query, 'matricula', $request->string('matricula')))
+            ->orderBy('matricula');
+
+        if ($includeCounts) {
+            $query->withCount('motores');
+        }
+
+        $aeronaves = $all
+            ? $query->get()
+            : $query->simplePaginate($perPage);
+
+        return [
+            'success' => true,
+            'meta' => [
+                'include_counts' => $includeCounts,
+                'all' => $all,
+                'per_page' => $all ? null : $aeronaves->perPage(),
+                'current_page' => $all ? 1 : $aeronaves->currentPage(),
+                'has_more_pages' => $all ? false : $aeronaves->hasMorePages(),
+                'next_page_url' => $all ? null : $aeronaves->nextPageUrl(),
+                'prev_page_url' => $all ? null : $aeronaves->previousPageUrl(),
+            ],
+            'data' => ($all ? $aeronaves : $aeronaves->getCollection())
+                ->map(fn (Aeronave $aeronave) => [
+                    'id' => $aeronave->id,
+                    'cliente' => $aeronave->cliente,
+                    'matricula' => $aeronave->matricula,
+                    'fabricante' => $aeronave->fabricante,
+                    'modelo' => $aeronave->modelo,
+                    'numero_serie' => $aeronave->numero_serie,
+                    'estado' => $aeronave->estado,
+                    'motores_count' => $includeCounts ? $aeronave->motores_count : null,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     public function show(Aeronave $aeronave)
     {
-        $payload = Cache::rememberForever($this->cacheKey('show', ['id' => $aeronave->id]), function () use ($aeronave) {
-            $aeronave->load([
-                'motores' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'aeronave_id',
-                        'posicion',
-                        'fabricante',
-                        'modelo',
-                        'numero_parte',
-                        'numero_serie',
-                        'tiempo_total',
-                        'ciclos_totales',
-                        'estado',
-                    ])
-                    ->orderBy('posicion')
-                    ->orderBy('numero_serie'),
-            ]);
+        return response()->json($this->getAeronaveData($aeronave));
+    }
 
-            return [
-                'success' => true,
-                'data' => $aeronave->toArray(),
-            ];
-        });
+    private function getAeronaveData(Aeronave $aeronave)
+    {
+        $aeronave->load([
+            'motores' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'aeronave_id',
+                    'posicion',
+                    'fabricante',
+                    'modelo',
+                    'numero_parte',
+                    'numero_serie',
+                    'tiempo_total',
+                    'ciclos_totales',
+                    'estado',
+                ])
+                ->orderBy('posicion')
+                ->orderBy('numero_serie'),
+        ]);
 
-        return response()->json($payload);
+        return [
+            'success' => true,
+            'data' => $aeronave->toArray(),
+        ];
     }
 
     public function store(Request $request)
@@ -116,7 +149,7 @@ class AeronaveController extends Controller
     {
         ksort($params);
 
-        return 'aeronaves:' . Cache::get('aeronaves_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+        return 'aeronaves:' . Cache::get('aeronaves_cache_version', 2) . ':' . $action . ':' . md5(json_encode($params));
     }
 
     private function bustCache(): void

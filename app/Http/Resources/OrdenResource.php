@@ -5,10 +5,13 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin \App\Models\Orden */
 class OrdenResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $horasResumen = $this->buildHorasTareasResumen();
+
         return [
             'id' => $this->id,
             'folio' => $this->folio,
@@ -31,10 +34,17 @@ class OrdenResource extends JsonResource
             'tipo_tarea' => $this->tipo_tarea,
             'intervalo' => $this->intervalo,
             'accion_correctiva' => $this->accion_correctiva,
+            'horas_labor' => $this->horas_labor,
             'tecnico_responsable' => $this->tecnico_responsable,
             'inspector' => $this->inspector,
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),
+            'miscelanea_costo_total' => $this->miscelanea_costo_total,
+            'miscelanea_precio_venta' => $this->miscelanea_precio_venta,
+            'miscelanea_observaciones_admin' => $this->miscelanea_observaciones_admin,
+            'hh_tareas_total' => $horasResumen['total_horas'],
+            'hh_tecnico_resumen' => $horasResumen['tecnico_resumen'],
+            'hh_tecnicos' => $horasResumen['tecnicos'],
             'area' => $this->whenLoaded('area', fn () => [
                 'id' => $this->area?->id,
                 'codigo' => $this->area?->codigo,
@@ -110,6 +120,51 @@ class OrdenResource extends JsonResource
             'mediciones_count' => $this->whenCounted('mediciones'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+        ];
+    }
+
+    private function buildHorasTareasResumen(): array
+    {
+        if (! $this->relationLoaded('tareas')) {
+            return [
+                'total_horas' => null,
+                'tecnico_resumen' => null,
+                'tecnicos' => [],
+            ];
+        }
+
+        $totalMinutos = 0.0;
+        $tecnicos = [];
+
+        foreach ($this->tareas as $tarea) {
+            $minutos = (float) ($tarea->tiempo_estimado_min ?? 0);
+            $totalMinutos += $minutos;
+
+            $tecnico = trim((string) ($tarea->tecnico ?? ''));
+            if ($tecnico === '') {
+                continue;
+            }
+
+            $tecnicos[$tecnico] = ($tecnicos[$tecnico] ?? 0.0) + $minutos;
+        }
+
+        $tecnicosNormalizados = collect($tecnicos)
+            ->map(fn (float $minutes, string $name) => [
+                'tecnico' => $name,
+                'horas' => round($minutes / 60, 2),
+            ])
+            ->sortByDesc('horas')
+            ->values()
+            ->all();
+
+        $tecnicoResumen = collect($tecnicosNormalizados)
+            ->map(fn (array $item) => sprintf('%s (%.1f h)', $item['tecnico'], $item['horas']))
+            ->implode(' | ');
+
+        return [
+            'total_horas' => round($totalMinutos / 60, 2),
+            'tecnico_resumen' => $tecnicoResumen !== '' ? $tecnicoResumen : null,
+            'tecnicos' => $tecnicosNormalizados,
         ];
     }
 }

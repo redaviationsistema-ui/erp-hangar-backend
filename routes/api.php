@@ -42,6 +42,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('clientes', ClienteController::class)->parameters([
             'clientes' => 'cliente',
         ]);
+        Route::get('/clientes/{cliente}/portal-dashboard', [ClientePortalController::class, 'adminDashboard']);
+        Route::post('/clientes/{cliente}/portal-selecciones-pago', [ClientePortalController::class, 'adminSelectPaymentMethod']);
+        Route::post('/clientes/{cliente}/portal-incidencias', [ClientePortalController::class, 'adminReportIncident']);
         Route::apiResource('areas', AreaController::class);
         Route::apiResource('aeronaves', AeronaveController::class)->parameters([
             'aeronaves' => 'aeronave',

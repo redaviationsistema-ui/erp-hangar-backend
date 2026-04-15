@@ -4,6 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $cliente_id
+ * @property int $orden_id
+ * @property string $folio
+ * @property string $concepto
+ * @property string $amount_total
+ * @property string $currency
+ * @property string $status
+ * @property string $issued_at
+ * @property string $due_at
+ * @property string $pdf_url
+ * @property string $notes
+ * @property Cliente $cliente
+ * @property Orden $orden
+ * @property ClientePortalPaymentSelection $latestPaymentSelection
+ */
 class ClientePortalInvoice extends Model
 {
     protected $fillable = [

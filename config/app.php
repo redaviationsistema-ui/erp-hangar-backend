@@ -97,6 +97,10 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
+    'profile_api_requests' => (bool) env('PROFILE_API_REQUESTS', false),
+    'profile_api_requests_threshold_ms' => (float) env('PROFILE_API_REQUESTS_THRESHOLD_MS', 1000),
+    'profile_api_requests_top_queries' => (int) env('PROFILE_API_REQUESTS_TOP_QUERIES', 5),
+
     'key' => env('APP_KEY'),
 
     'previous_keys' => [

@@ -12,7 +12,7 @@ class TareaController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::remember($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addSeconds(30), function () use ($request) {
+        $payload = $this->cacheOrFetch($this->cacheKey('index', array_merge($request->query(), $this->areaCacheContext($request))), now()->addSeconds(30), function () use ($request) {
             $query = $this->applyAreaScope($request, Tarea::query())
                 ->select([
                     'id',

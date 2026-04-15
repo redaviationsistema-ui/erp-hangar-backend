@@ -3,7 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $aeronave_id
+ * @property string|null $posicion
+ * @property string|null $fabricante
+ * @property string|null $modelo
+ * @property string|null $numero_parte
+ * @property string $numero_serie
+ * @property float|null $tiempo_total
+ * @property float|null $ciclos_totales
+ * @property string|null $estado
+ * @property string|null $notas
+ * @property int|null $ordenes_count
+ * @property Aeronave|null $aeronave
+ */
 class Motor extends Model
 {
     protected $table = 'motores';
@@ -29,12 +46,12 @@ class Motor extends Model
         ];
     }
 
-    public function aeronave()
+    public function aeronave(): BelongsTo
     {
         return $this->belongsTo(Aeronave::class);
     }
 
-    public function ordenes()
+    public function ordenes(): HasMany
     {
         return $this->hasMany(Orden::class)->latest('fecha')->latest('id');
     }

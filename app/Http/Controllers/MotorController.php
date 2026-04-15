@@ -10,13 +10,12 @@ class MotorController extends Controller
 {
     public function index(Request $request)
     {
-        $payload = Cache::rememberForever($this->cacheKey('index', $request->query()), function () use ($request) {
+        $payload = $this->cacheForeverOrFetch($this->cacheKey('index', $request->query()), function () use ($request) {
             $includeCounts = $request->boolean('include_counts');
             $all = $request->boolean('all');
-            $perPage = max(1, min($request->integer('per_page', 50), 100));
+            $perPage = max(1, min($request->integer('per_page', 20), 100));
 
             $query = Motor::query()
-                ->leftJoin('aeronaves as aeronave', 'aeronave.id', '=', 'motores.aeronave_id')
                 ->select([
                     'motores.id',
                     'motores.aeronave_id',
@@ -28,13 +27,8 @@ class MotorController extends Controller
                     'motores.tiempo_total',
                     'motores.ciclos_totales',
                     'motores.estado',
-                    'aeronave.cliente as aeronave_cliente',
-                    'aeronave.matricula as aeronave_matricula',
-                    'aeronave.fabricante as aeronave_fabricante',
-                    'aeronave.modelo as aeronave_modelo',
-                    'aeronave.numero_serie as aeronave_numero_serie',
-                    'aeronave.estado as aeronave_estado',
                 ])
+                ->with(['aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado'])
                 ->when($request->filled('aeronave_id'), fn ($query) => $query->where('motores.aeronave_id', $request->integer('aeronave_id')))
                 ->when($request->filled('numero_serie'), fn ($query) => $this->applyIndexedPrefixSearch($query, 'motores.numero_serie', $request->string('numero_serie')))
                 ->orderBy('motores.numero_serie');
@@ -70,7 +64,7 @@ class MotorController extends Controller
 
     public function show(Motor $motor)
     {
-        $payload = Cache::rememberForever($this->cacheKey('show', ['id' => $motor->id]), function () use ($motor) {
+        $payload = $this->cacheForeverOrFetch($this->cacheKey('show', ['id' => $motor->id]), function () use ($motor) {
             $motor->load([
                 'aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado',
                 'ordenes' => fn ($query) => $query
@@ -168,7 +162,7 @@ class MotorController extends Controller
     {
         ksort($params);
 
-        return 'motores:' . Cache::get('motores_cache_version', 1) . ':' . $action . ':' . md5(json_encode($params));
+        return 'motores:' . Cache::get('motores_cache_version', 2) . ':' . $action . ':' . md5(json_encode($params));
     }
 
     private function serializeIndexMotor(Motor $motor, bool $includeCounts): array
@@ -184,14 +178,14 @@ class MotorController extends Controller
             'tiempo_total' => $motor->tiempo_total,
             'ciclos_totales' => $motor->ciclos_totales,
             'estado' => $motor->estado,
-            'aeronave' => $motor->aeronave_id ? [
-                'id' => $motor->aeronave_id,
-                'cliente' => $motor->aeronave_cliente,
-                'matricula' => $motor->aeronave_matricula,
-                'fabricante' => $motor->aeronave_fabricante,
-                'modelo' => $motor->aeronave_modelo,
-                'numero_serie' => $motor->aeronave_numero_serie,
-                'estado' => $motor->aeronave_estado,
+            'aeronave' => $motor->aeronave ? [
+                'id' => $motor->aeronave->id,
+                'cliente' => $motor->aeronave->cliente,
+                'matricula' => $motor->aeronave->matricula,
+                'fabricante' => $motor->aeronave->fabricante,
+                'modelo' => $motor->aeronave->modelo,
+                'numero_serie' => $motor->aeronave->numero_serie,
+                'estado' => $motor->aeronave->estado,
             ] : null,
         ];
 

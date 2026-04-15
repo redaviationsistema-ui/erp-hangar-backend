@@ -18,7 +18,11 @@ class AuthController extends Controller
         ]);
 
         $cliente = Cliente::query()
-            ->with('otAsignadaOrden.area')
+            ->withCount('ordenesAsignadas')
+            ->with([
+                'otAsignadaOrden:id,area_id,folio,estado,descripcion,matricula',
+                'otAsignadaOrden.area:id,nombre,codigo',
+            ])
             ->where('email', $credentials['email'])
             ->first();
 
@@ -94,7 +98,11 @@ class AuthController extends Controller
 
         if ($actor instanceof Cliente) {
             $cliente = Cliente::query()
-                ->with('otAsignadaOrden.area')
+                ->withCount('ordenesAsignadas')
+                ->with([
+                    'otAsignadaOrden:id,area_id,folio,estado,descripcion,matricula',
+                    'otAsignadaOrden.area:id,nombre,codigo',
+                ])
                 ->findOrFail($actor->id);
 
             return response()->json([
@@ -182,10 +190,21 @@ class AuthController extends Controller
     private function serializeCliente(Cliente $cliente): array
     {
         $otAsignada = $cliente->otAsignadaOrden;
-        $relatedOrders = $cliente->relatedOrdersQuery()
-            ->latest('id')
+        $previewOrders = $cliente->ordenesAsignadas()
+            ->select(['ordenes.id', 'ordenes.area_id', 'ordenes.folio', 'ordenes.estado', 'ordenes.descripcion', 'ordenes.matricula'])
+            ->with('area:id,nombre')
+            ->latest('ordenes.id')
             ->limit(10)
             ->get();
+
+        if ($previewOrders->isEmpty() && $otAsignada) {
+            $previewOrders = collect([$otAsignada]);
+        }
+
+        $assignedOrderIds = $previewOrders->pluck('id')->filter()->values();
+        $assignedOrdersCount = is_numeric($cliente->ordenes_asignadas_count ?? null)
+            ? (int) $cliente->ordenes_asignadas_count
+            : $assignedOrderIds->count();
 
         return [
             'id' => $cliente->id,
@@ -215,9 +234,10 @@ class AuthController extends Controller
                 'estatus' => $cliente->estatus ?: 'Activo',
                 'ot_asignada_id' => $cliente->ot_asignada_id,
                 'ot_asignada' => $otAsignada?->folio,
+                'ot_asignadas_ids' => $assignedOrderIds,
                 'contrasena' => $cliente->contrasena_portal,
-                'ordenes_trabajo_count' => $relatedOrders->count(),
-                'ordenes_trabajo' => $relatedOrders->map(fn ($orden) => [
+                'ordenes_trabajo_count' => $assignedOrdersCount,
+                'ordenes_trabajo' => $previewOrders->map(fn ($orden) => [
                     'id' => $orden->id,
                     'folio' => $orden->folio,
                     'estado' => $orden->estado,

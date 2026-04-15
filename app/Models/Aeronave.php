@@ -4,6 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string|null $cliente
+ * @property string $matricula
+ * @property string|null $fabricante
+ * @property string|null $modelo
+ * @property string|null $numero_serie
+ * @property string|null $estado
+ * @property string|null $notas
+ */
 class Aeronave extends Model
 {
     protected $fillable = [
