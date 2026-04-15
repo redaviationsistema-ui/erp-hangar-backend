@@ -27,11 +27,22 @@ class AuthController extends Controller
             ->first();
 
         if ($cliente) {
-            if (! Hash::check($credentials['password'], $cliente->password)) {
+            $matchesHashedPassword = ! empty($cliente->password)
+                && Hash::check($credentials['password'], $cliente->password);
+            $matchesPortalPassword = ! empty($cliente->contrasena_portal)
+                && hash_equals((string) $cliente->contrasena_portal, (string) $credentials['password']);
+
+            if (! $matchesHashedPassword && ! $matchesPortalPassword) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Credenciales invalidas.',
                 ], 401);
+            }
+
+            if (! $matchesHashedPassword) {
+                $cliente->forceFill([
+                    'password' => $credentials['password'],
+                ])->save();
             }
 
             $token = $cliente->createToken('api-token')->plainTextToken;
@@ -142,6 +153,13 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        if (! $user) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No habia una sesion activa.',
+            ]);
+        }
+
         app()->terminating(function () use ($user) {
             AuditLogger::log('logout', 'Cierre de sesion del usuario autenticado.', [
                 'user_id' => $user?->id,
@@ -151,7 +169,7 @@ class AuthController extends Controller
             ]);
         });
 
-        $user?->currentAccessToken()?->delete();
+        $user->currentAccessToken()?->delete();
 
         return response()->json([
             'success' => true,
