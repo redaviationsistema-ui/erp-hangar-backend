@@ -256,7 +256,7 @@ class AuthController extends Controller
                 'ot_asignada_id' => $cliente->ot_asignada_id,
                 'ot_asignada' => $otAsignada?->folio,
                 'ot_asignadas_ids' => $assignedOrderIds,
-                'contrasena' => $cliente->contrasena_portal,
+                'contrasena' => $this->resolveClientePortalPassword($cliente),
                 'ordenes_trabajo_count' => $assignedOrdersCount,
                 'ordenes_trabajo' => $previewOrders->map(fn ($orden) => [
                     'id' => $orden->id,
@@ -326,3 +326,4 @@ class AuthController extends Controller
         )));
     }
 }
+
