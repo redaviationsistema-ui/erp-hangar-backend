@@ -93,6 +93,12 @@ class AreaOtFormSchema
                 'empty_state' => 'Sin pasos configurados para esta area.',
             ],
             [
+                'key' => 'cartas',
+                'label' => 'CARTAS',
+                'collection' => 'cartas',
+                'empty_state' => 'Sin cartas configuradas para esta area.',
+            ],
+            [
                 'key' => 'discrepancia',
                 'label' => 'DISCREPANCIA',
                 'collection' => 'discrepancias',
@@ -149,4 +155,5 @@ class AreaOtFormSchema
         return $schema;
     }
 }
+
 

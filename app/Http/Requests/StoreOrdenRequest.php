@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Orden;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Validator;
 
 class StoreOrdenRequest extends FormRequest
@@ -69,6 +70,26 @@ class StoreOrdenRequest extends FormRequest
             'tareas.*.foto_base64' => 'nullable|string',
             'tareas.*.imagen_base64' => 'nullable|string',
             'tareas.*.evidencia_base64' => 'nullable|string',
+            'cartas' => 'nullable|array',
+            'cartas.*.item' => 'nullable|string|max:20',
+            'cartas.*.tarea' => 'nullable|string|max:255',
+            'cartas.*.titulo' => 'required_with:cartas|string|max:255',
+            'cartas.*.remanente' => 'nullable|string|max:255',
+            'cartas.*.completado' => 'nullable|string|max:255',
+            'cartas.*.siguiente' => 'nullable|string|max:255',
+            'cartas.*.notas' => 'nullable|string',
+            'cartas.*.accion_correctiva' => 'nullable|string',
+            'cartas.*.descripcion_componente' => 'nullable|string|max:255',
+            'cartas.*.cantidad' => 'nullable|integer|min:1',
+            'cartas.*.numero_parte' => 'nullable|string|max:255',
+            'cartas.*.numero_serie_removido' => 'nullable|string|max:255',
+            'cartas.*.numero_serie_instalado' => 'nullable|string|max:255',
+            'cartas.*.observaciones' => 'nullable|string',
+            'cartas.*.fecha_termino' => 'nullable|date',
+            'cartas.*.horas_labor' => 'nullable|numeric',
+            'cartas.*.auxiliar' => 'nullable|string|max:255',
+            'cartas.*.tecnico' => 'nullable|string|max:255',
+            'cartas.*.inspector' => 'nullable|string|max:255',
             'discrepancias' => 'nullable|array',
             'discrepancias.*.item' => 'nullable|string|max:20',
             'discrepancias.*.descripcion' => 'required_with:discrepancias|string',
@@ -142,7 +163,7 @@ class StoreOrdenRequest extends FormRequest
     protected function buildClosingSnapshot(array $data): array
     {
         $order = $this->currentOrder();
-        $order?->loadMissing([
+        $relations = [
             'tareas',
             'discrepancias',
             'refacciones',
@@ -151,12 +172,21 @@ class StoreOrdenRequest extends FormRequest
             'ndt',
             'talleresExternos',
             'mediciones',
-        ]);
+        ];
+
+        if (Schema::hasTable('cartas')) {
+            $relations[] = 'cartas';
+        }
+
+        $order?->loadMissing($relations);
 
         $responsible = trim((string) ($data['tecnico_responsable'] ?? $order?->tecnico_responsable ?? ''));
         $hasAssignedUser = ! empty($data['user_id']) || ! empty($order?->user_id);
 
         $tareas = $this->relationItems($data, 'tareas', $order?->tareas?->all() ?? []);
+        $cartas = Schema::hasTable('cartas')
+            ? $this->relationItems($data, 'cartas', $order?->cartas?->all() ?? [])
+            : [];
         $discrepancias = $this->relationItems($data, 'discrepancias', $order?->discrepancias?->all() ?? []);
         $refacciones = $this->relationItems($data, 'refacciones', $order?->refacciones?->all() ?? []);
         $consumibles = $this->relationItems($data, 'consumibles', $order?->consumibles?->all() ?? []);
@@ -169,12 +199,14 @@ class StoreOrdenRequest extends FormRequest
             'has_responsible' => $responsible !== '' || $hasAssignedUser,
             'has_evidence' => $this->hasEvidence([
                 ...$tareas,
+                ...$cartas,
                 ...$discrepancias,
                 ...$ndt,
                 ...$talleres,
                 ...$mediciones,
             ]),
             'has_materials' => $this->hasMaterials([
+                ...$cartas,
                 ...$refacciones,
                 ...$consumibles,
                 ...$herramientas,
@@ -389,3 +421,5 @@ class StoreOrdenRequest extends FormRequest
         ];
     }
 }
+
+

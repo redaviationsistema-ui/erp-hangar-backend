@@ -194,6 +194,11 @@ class Orden extends Model
         return $this->hasMany(Discrepancia::class, 'orden_id');
     }
 
+    public function cartas(): HasMany
+    {
+        return $this->hasMany(Carta::class, 'orden_id');
+    }
+
     public function refacciones(): HasMany
     {
         return $this->hasMany(Refaccion::class, 'orden_id');
@@ -224,3 +229,4 @@ class Orden extends Model
         return $this->hasMany(Medicion::class, 'orden_id');
     }
 }
+

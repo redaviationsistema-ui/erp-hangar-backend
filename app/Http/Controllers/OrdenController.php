@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class OrdenController extends Controller
 {
@@ -53,7 +54,7 @@ class OrdenController extends Controller
             }
 
             if ($includeCounts) {
-                $query->withCount($this->countRelations());
+                $query->withCount($this->availableRelations($this->countRelations()));
             }
 
             $query
@@ -101,8 +102,8 @@ class OrdenController extends Controller
         $payload = $this->cacheOrFetch($this->cacheKey('examples'), now()->addMinutes(5), function () {
             $ordenes = Orden::query()
                 ->select($this->summaryColumns())
-                ->withCount($this->countRelations())
-                ->with($this->showRelations())
+                ->withCount($this->availableRelations($this->countRelations()))
+                ->with($this->availableRelations($this->showRelations()))
                 ->whereIn('folio', [
                     'CESA-TREN25-033',
                     'CESA-HANG26-016',
@@ -145,6 +146,27 @@ class OrdenController extends Controller
             'foto_base64',
             'imagen_base64',
             'evidencia_base64',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('cartas', []), [
+            'item',
+            'tarea',
+            'titulo',
+            'remanente',
+            'completado',
+            'siguiente',
+            'notas',
+            'accion_correctiva',
+            'descripcion_componente',
+            'cantidad',
+            'numero_parte',
+            'numero_serie_removido',
+            'numero_serie_instalado',
+            'observaciones',
+            'fecha_termino',
+            'horas_labor',
+            'auxiliar',
+            'tecnico',
+            'inspector',
         ]);
         $this->authorizeNestedOperationalPayload($request, $request->validated('discrepancias', []), [
             'item',
@@ -222,7 +244,7 @@ class OrdenController extends Controller
             return $orden;
         });
 
-        $orden->load($this->saveResponseRelations())->loadCount($this->saveResponseCountRelations());
+        $orden->load($this->availableRelations($this->saveResponseRelations()))->loadCount($this->availableRelations($this->saveResponseCountRelations()));
 
         $this->bustCache();
 
@@ -241,10 +263,10 @@ class OrdenController extends Controller
         $includeCounts = request()->boolean('include_counts');
 
         $payload = $this->cacheOrFetch($this->cacheKey('show', ['id' => $ordene->id, 'include_counts' => $includeCounts] + $this->areaCacheContext(request())), now()->addMinutes(5), function () use ($ordene, $includeCounts) {
-            $ordene->load($this->showRelations());
+            $ordene->load($this->availableRelations($this->showRelations()));
 
             if ($includeCounts) {
-                $ordene->loadCount($this->countRelations());
+                $ordene->loadCount($this->availableRelations($this->countRelations()));
             }
 
             return [
@@ -284,6 +306,27 @@ class OrdenController extends Controller
             'foto_base64',
             'imagen_base64',
             'evidencia_base64',
+        ]);
+        $this->authorizeNestedOperationalPayload($request, $request->validated('cartas', []), [
+            'item',
+            'tarea',
+            'titulo',
+            'remanente',
+            'completado',
+            'siguiente',
+            'notas',
+            'accion_correctiva',
+            'descripcion_componente',
+            'cantidad',
+            'numero_parte',
+            'numero_serie_removido',
+            'numero_serie_instalado',
+            'observaciones',
+            'fecha_termino',
+            'horas_labor',
+            'auxiliar',
+            'tecnico',
+            'inspector',
         ]);
         $this->authorizeNestedOperationalPayload($request, $request->validated('discrepancias', []), [
             'item',
@@ -354,7 +397,7 @@ class OrdenController extends Controller
             return $ordene;
         });
 
-        $orden->load($this->saveResponseRelations())->loadCount($this->saveResponseCountRelations());
+        $orden->load($this->availableRelations($this->saveResponseRelations()))->loadCount($this->availableRelations($this->saveResponseCountRelations()));
 
         $this->bustCache();
 
@@ -387,7 +430,7 @@ class OrdenController extends Controller
             return [
                 'success' => true,
                 'message' => 'Orden completa obtenida.',
-                'data' => OrdenResource::make($ordene->load($this->detailRelations()))->resolve(),
+                'data' => OrdenResource::make($ordene->load($this->availableRelations($this->detailRelations())))->resolve(),
             ];
         });
 
@@ -403,7 +446,7 @@ class OrdenController extends Controller
             $this->cacheKey('trazabilidad', ['id' => $ordene->id] + $this->areaCacheContext(request())),
             now()->addMinutes(5),
             function () use ($ordene) {
-                $ordene->load($this->detailRelations())->loadCount($this->countRelations());
+                $ordene->load($this->availableRelations($this->detailRelations()))->loadCount($this->availableRelations($this->countRelations()));
 
                 return [
                     'success' => true,
@@ -457,6 +500,9 @@ class OrdenController extends Controller
         }
 
         $this->replaceCollection($orden, 'tareas', $data['tareas'] ?? null);
+        if ($this->cartasTableAvailable()) {
+            $this->replaceCollection($orden, 'cartas', $data['cartas'] ?? null);
+        }
         $this->replaceCollection($orden, 'discrepancias', $data['discrepancias'] ?? null);
         $this->replaceCollection($orden, 'refacciones', $data['refacciones'] ?? null);
         $this->replaceCollection($orden, 'consumibles', $data['consumibles'] ?? null);
@@ -635,6 +681,7 @@ class OrdenController extends Controller
                 ->orderBy('id'),
             'tareas.plantillaAta:id,ata_subchapter_id,area_id,titulo,descripcion,tipo,tiempo_estimado_min,prioridad',
             'tareas.area:id,codigo,numero,nombre',
+            'cartas',
             'discrepancias',
             'refacciones',
             'consumibles',
@@ -675,6 +722,7 @@ class OrdenController extends Controller
                 ->orderBy('id'),
             'tareas.plantillaAta:id,ata_subchapter_id,area_id,titulo,descripcion,tipo,tiempo_estimado_min,prioridad',
             'tareas.area:id,codigo,numero,nombre',
+            'cartas',
             'motor:id,aeronave_id,posicion,fabricante,modelo,numero_parte,numero_serie,tiempo_total,ciclos_totales,estado',
             'motor.aeronave:id,cliente,matricula,fabricante,modelo,numero_serie,estado',
         ];
@@ -706,6 +754,7 @@ class OrdenController extends Controller
                 ->orderBy('id'),
             'tareas.plantillaAta:id,ata_subchapter_id,area_id,titulo,descripcion,tipo,tiempo_estimado_min,prioridad',
             'tareas.area:id,codigo,numero,nombre',
+            'cartas',
             'discrepancias',
             'refacciones',
             'consumibles',
@@ -719,6 +768,7 @@ class OrdenController extends Controller
     {
         return [
             'tareas',
+            'cartas',
             'discrepancias',
             'refacciones',
             'consumibles',
@@ -733,6 +783,7 @@ class OrdenController extends Controller
     {
         return [
             'tareas',
+            'cartas',
             'discrepancias',
             'refacciones',
             'consumibles',
@@ -740,6 +791,34 @@ class OrdenController extends Controller
             'ndt',
             'talleresExternos',
         ];
+    }
+
+    private function availableRelations(array $relations): array
+    {
+        $available = [];
+
+        foreach ($relations as $key => $definition) {
+            if ($definition === 'cartas' || $key === 'cartas') {
+                if (! $this->cartasTableAvailable()) {
+                    continue;
+                }
+            }
+
+            if (is_int($key)) {
+                $available[] = $definition;
+
+                continue;
+            }
+
+            $available[$key] = $definition;
+        }
+
+        return $available;
+    }
+
+    private function cartasTableAvailable(): bool
+    {
+        return Schema::hasTable('cartas');
     }
 
     private function serializeIndexOrder(Orden $orden, bool $includeAta, bool $includeCounts): array
@@ -808,6 +887,7 @@ class OrdenController extends Controller
             ] : null,
             'created_at' => $orden->created_at,
             'updated_at' => $orden->updated_at,
+            'cartas_enabled' => $this->cartasTableAvailable(),
         ];
 
         if ($includeAta) {
@@ -831,6 +911,7 @@ class OrdenController extends Controller
 
         if ($includeCounts) {
             $payload['tareas_count'] = $orden->tareas_count;
+            $payload['cartas_count'] = $orden->cartas_count;
             $payload['discrepancias_count'] = $orden->discrepancias_count;
             $payload['refacciones_count'] = $orden->refacciones_count;
             $payload['consumibles_count'] = $orden->consumibles_count;
@@ -1242,6 +1323,7 @@ class OrdenController extends Controller
         return [
             'generar_tareas_ata',
             'tareas',
+            'cartas',
             'discrepancias',
             'refacciones',
             'consumibles',
@@ -1266,3 +1348,5 @@ class OrdenController extends Controller
         Cache::forever('dashboard_cache_version', (int) Cache::get('dashboard_cache_version', 1) + 1);
     }
 }
+
+

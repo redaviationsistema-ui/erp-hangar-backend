@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Schema;
 
 /** @mixin \App\Models\Orden */
 class OrdenResource extends JsonResource
@@ -101,6 +102,11 @@ class OrdenResource extends JsonResource
             ] : null),
             'tareas' => $this->whenLoaded('tareas'),
             'tareas_count' => $this->whenCounted('tareas'),
+            'cartas' => $this->whenLoaded(
+                'cartas',
+                fn () => CartaResource::collection($this->cartas)->resolve($request)
+            ),
+            'cartas_count' => $this->whenCounted('cartas'),
             'discrepancias' => $this->whenLoaded(
                 'discrepancias',
                 fn () => DiscrepanciaResource::collection($this->discrepancias)->resolve($request)
@@ -168,3 +174,5 @@ class OrdenResource extends JsonResource
         ];
     }
 }
+
+

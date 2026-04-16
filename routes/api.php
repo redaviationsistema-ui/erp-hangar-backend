@@ -9,6 +9,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClientePortalController;
+use App\Http\Controllers\CartaController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
@@ -76,6 +77,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('ordenes', OrdenController::class);
 
         Route::apiResource('tareas', TareaController::class);
+        Route::apiResource('cartas', CartaController::class);
         Route::apiResource('discrepancias', DiscrepanciaController::class);
         Route::apiResource('refacciones', RefaccionController::class);
         Route::apiResource('consumibles', ConsumibleController::class);
@@ -85,3 +87,5 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('mediciones', MedicionController::class);
     });
 });
+
+
