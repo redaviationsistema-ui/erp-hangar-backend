@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\User;
 use App\Support\Audit\AuditLogger;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -27,10 +29,11 @@ class AuthController extends Controller
             ->first();
 
         if ($cliente) {
+            $portalPassword = $this->resolveClientePortalPassword($cliente);
             $matchesHashedPassword = ! empty($cliente->password)
                 && Hash::check($credentials['password'], $cliente->password);
-            $matchesPortalPassword = ! empty($cliente->contrasena_portal)
-                && hash_equals((string) $cliente->contrasena_portal, (string) $credentials['password']);
+            $matchesPortalPassword = $portalPassword !== null
+                && hash_equals($portalPassword, (string) $credentials['password']);
 
             if (! $matchesHashedPassword && ! $matchesPortalPassword) {
                 return response()->json([
@@ -265,6 +268,21 @@ class AuthController extends Controller
                 ])->values(),
             ],
         ];
+    }
+
+    private function resolveClientePortalPassword(Cliente $cliente): ?string
+    {
+        $rawPortalPassword = $cliente->getRawOriginal('contrasena_portal');
+
+        if (! is_string($rawPortalPassword) || trim($rawPortalPassword) === '') {
+            return null;
+        }
+
+        try {
+            return (string) Crypt::decryptString($rawPortalPassword);
+        } catch (DecryptException) {
+            return trim($rawPortalPassword);
+        }
     }
 
     private function findUserByEmail(string $email): ?object
