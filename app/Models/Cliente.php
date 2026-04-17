@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -57,8 +60,42 @@ class Cliente extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            'contrasena_portal' => 'encrypted',
         ];
+    }
+
+    protected function contrasenaPortal(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value): ?string {
+                if ($value === null) {
+                    return null;
+                }
+
+                $plain = trim((string) $value);
+                if ($plain === '') {
+                    return null;
+                }
+
+                try {
+                    return Crypt::decryptString($plain);
+                } catch (DecryptException) {
+                    // Compatibilidad con registros legacy que guardaron texto plano.
+                    return $plain;
+                }
+            },
+            set: function (mixed $value): ?string {
+                if ($value === null) {
+                    return null;
+                }
+
+                $plain = trim((string) $value);
+                if ($plain === '') {
+                    return null;
+                }
+
+                return Crypt::encryptString($plain);
+            },
+        );
     }
 
     public function otAsignadaOrden()
