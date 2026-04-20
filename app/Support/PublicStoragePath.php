@@ -9,6 +9,9 @@ class PublicStoragePath
     private const STORAGE_DIRECTORIES = [
         'discrepancias',
         'tareas',
+        'refacciones',
+        'consumibles',
+        'herramientas',
         'ndt',
         'talleres-externos',
         'mediciones',
@@ -54,7 +57,7 @@ class PublicStoragePath
 
     public static function url(string $path): string
     {
-        return asset('public/storage/' . ltrim(str_replace('\\', '/', $path), '/'));
+        return asset('storage/' . ltrim(str_replace('\\', '/', $path), '/'));
     }
 
     private static function normalizeKnownStoragePath(string $value): ?string

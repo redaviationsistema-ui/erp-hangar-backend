@@ -21,6 +21,7 @@ class DiscrepanciaResource extends JsonResource
             'descripcion' => $this->descripcion,
             'accion_correctiva' => $this->accion_correctiva,
             'status' => $this->status,
+            'tecnico' => $this->tecnico,
             'inspector' => $this->inspector,
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),

@@ -17,6 +17,14 @@ Route::get('/public/storage/{path}', function (string $path) {
     return Storage::disk('public')->response($path);
 })->where('path', '.*');
 
+Route::get('/storage/{path}', function (string $path) {
+    $path = ltrim(str_replace('\\', '/', $path), '/');
+
+    abort_unless(Storage::disk('public')->exists($path), 404);
+
+    return Storage::disk('public')->response($path);
+})->where('path', '.*');
+
 if (! app()->environment('production')) {
     Route::get('/debug-imagen', function () {
         $path = 'discrepancias/1544ca2b-3983-4a70-8d0e-dc34802df65f.png';

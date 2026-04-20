@@ -158,7 +158,8 @@ abstract class Controller
 
     protected function canManageInventoryPricing(Request $request): bool
     {
-        return in_array($request->user()?->rol, ['admin', 'supervisor', 'administracion'], true);
+        return in_array($request->user()?->rol, ['admin', 'supervisor', 'administracion'], true)
+            || $this->isComprasUser($request);
     }
 
     protected function normalizedUserEmail(Request $request): string
@@ -175,6 +176,27 @@ abstract class Controller
     {
         return $request->user()?->rol === 'administracion'
             || $this->normalizedUserEmail($request) === 'administracion@redaviation.com';
+    }
+
+    protected function isComprasUser(Request $request): bool
+    {
+        $user = $request->user();
+        $email = $this->normalizedUserEmail($request);
+        $role = strtolower(trim((string) $user?->rol));
+        $roleName = strtolower(trim((string) $user?->rol_nombre));
+        $areaCode = strtoupper(trim((string) $user?->area?->codigo));
+
+        return $email === 'compras@redaviation.com'
+            || in_array($role, ['compras', 'purchasing'], true)
+            || in_array($roleName, ['compras', 'purchasing'], true)
+            || $areaCode === 'COMPRAS';
+    }
+
+    protected function canCaptureInventoryCost(Request $request): bool
+    {
+        return $this->isAdministracionUser($request)
+            || $this->isComprasUser($request)
+            || in_array($request->user()?->rol, ['admin', 'supervisor'], true);
     }
 
     protected function isExclusiveAdministracionEmail(Request $request): bool
@@ -326,7 +348,7 @@ abstract class Controller
         $costKeys = ['costo_total', 'costo'];
 
         foreach ($costKeys as $costKey) {
-            if (array_key_exists($costKey, $payload) && ! $this->isAdministracionUser($request)) {
+            if (array_key_exists($costKey, $payload) && ! $this->canCaptureInventoryCost($request)) {
                 throw new HttpException(403, 'Solo Administracion/Inventario puede capturar costo.');
             }
         }
@@ -358,7 +380,7 @@ abstract class Controller
 
     protected function storeIncomingImage(Request $request, array &$data, string $targetKey, string $directory, array $aliases = []): void
     {
-        $keys = array_values(array_unique([$targetKey, ...$aliases]));
+        $keys = $this->imageInputKeys($targetKey, $aliases);
 
         foreach ($keys as $key) {
             $uploadedFile = $request->file($key);
@@ -391,7 +413,7 @@ abstract class Controller
 
     protected function storeIncomingImageFromData(array &$data, string $targetKey, string $directory, array $aliases = []): void
     {
-        $keys = array_values(array_unique([$targetKey, ...$aliases]));
+        $keys = $this->imageInputKeys($targetKey, $aliases);
 
         foreach ($keys as $key) {
             $value = $data[$key] ?? null;
@@ -454,6 +476,10 @@ abstract class Controller
             return $normalizedPath;
         }
 
+        if (! Storage::disk('public')->exists($normalizedPath)) {
+            return null;
+        }
+
         return PublicStoragePath::url($normalizedPath);
     }
 
@@ -472,6 +498,54 @@ abstract class Controller
         }
 
         return $resource;
+    }
+
+
+    protected function imageInputKeys(string $targetKey, array $aliases = []): array
+    {
+        return array_values(array_unique([
+            $targetKey,
+            ...$aliases,
+            ...$this->defaultImageAliasesForKey($targetKey),
+        ]));
+    }
+
+    protected function defaultImageAliasesForKey(string $targetKey): array
+    {
+        $common = [
+            'foto_url',
+            'imagen_url',
+            'evidencia_url',
+            'secure_url',
+            'secureUrl',
+            'url',
+            'src',
+            'cloudinary_url',
+            'cloudinaryUrl',
+            'cloudinary_secure_url',
+            'cloudinarySecureUrl',
+            'foto_cloudinary_url',
+            'imagen_cloudinary_url',
+            'evidencia_cloudinary_url',
+        ];
+
+        return match ($targetKey) {
+            'certificado_conformidad_imagen' => [
+                ...$common,
+                'certificado_conformidad_imagen_url',
+                'certificado_conformidad_imagen_cloudinary_url',
+                'certificado_conformidad_foto',
+                'certificado_conformidad_foto_url',
+                'certificado_conformidad_foto_cloudinary_url',
+                'foto_certificado',
+                'foto_certificado_url',
+                'foto_certificado_cloudinary_url',
+                'certificado_foto',
+                'certificado_foto_url',
+                'certificado_foto_cloudinary_url',
+            ],
+            default => $common,
+        };
     }
 
     private function storeBase64Image(string $value, string $directory): ?string
@@ -503,6 +577,8 @@ abstract class Controller
             return $this->uploadToCloudinary($binary, $path);
         }
 
+        $this->ensureLocalImageStorageAllowed();
+
         Storage::disk('public')->put($path, $binary);
 
         return $path;
@@ -522,7 +598,21 @@ abstract class Controller
             return $this->uploadToCloudinary($binary, $path);
         }
 
+        $this->ensureLocalImageStorageAllowed();
+
         return $uploadedFile->store($directory, 'public');
+    }
+
+    private function ensureLocalImageStorageAllowed(): void
+    {
+        if (! app()->environment('production')) {
+            return;
+        }
+
+        throw new RuntimeException(
+            'Cloudinary no esta configurado en el backend de produccion. '
+            . 'Configura CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en Render.'
+        );
     }
 
     private function shouldUseCloudinary(): bool

@@ -16,6 +16,7 @@ class Discrepancia extends Model
         'descripcion',
         'accion_correctiva',
         'status',
+        'tecnico',
         'inspector',
         'fecha_inicio',
         'fecha_termino',
