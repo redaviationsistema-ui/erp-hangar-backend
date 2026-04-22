@@ -339,6 +339,7 @@ class StoreOrdenRequest extends FormRequest
             $prefix . '.*.recibe_nombre' => 'nullable|string|max:255',
             $prefix . '.*.costo_total' => 'nullable|numeric',
             $prefix . '.*.precio_venta' => 'nullable|numeric',
+            $prefix . '.*.fecha_entrega' => 'nullable|date',
         ];
     }
 

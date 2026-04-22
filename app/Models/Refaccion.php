@@ -25,6 +25,7 @@ class Refaccion extends Model
         'recibe_nombre',
         'costo_total',
         'precio_venta',
+        'fecha_entrega',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class Refaccion extends Model
             'recibe_fecha' => 'date',
             'costo_total' => 'decimal:2',
             'precio_venta' => 'decimal:2',
+            'fecha_entrega' => 'date',
         ];
     }
 

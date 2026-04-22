@@ -30,6 +30,7 @@ class AreaSeeder extends Seeder
             ['nombre' => 'TORNO', 'codigo' => 'TORN', 'numero' => '11'],
             ['nombre' => 'SALVAMENTO ESPECIALIZADO', 'codigo' => 'SALV', 'numero' => '12'],
             ['nombre' => 'SOLDADURA ESPECIALIZADA', 'codigo' => 'SOLD', 'numero' => '13'],
+            ['nombre' => 'COMPRAS', 'codigo' => 'COMPRAS', 'numero' => '98'],
         ];
     }
 }

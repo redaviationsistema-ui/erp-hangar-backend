@@ -40,6 +40,7 @@ class RefaccionController extends Controller
             'area_procedencia',
             'recibe_fecha',
             'recibe_nombre',
+            'fecha_entrega',
         ]);
         $this->storeIncomingImage($request, $data, 'certificado_conformidad_imagen', 'refacciones', [
             'certificado_conformidad_imagen',
@@ -86,6 +87,7 @@ class RefaccionController extends Controller
             'area_procedencia',
             'recibe_fecha',
             'recibe_nombre',
+            'fecha_entrega',
         ]);
         $this->storeIncomingImage($request, $data, 'certificado_conformidad_imagen', 'refacciones', [
             'certificado_conformidad_imagen',
@@ -145,6 +147,7 @@ class RefaccionController extends Controller
             'recibe_nombre' => 'sometimes|nullable|string|max:255',
             'costo_total' => 'sometimes|nullable|numeric',
             'precio_venta' => 'sometimes|nullable|numeric',
+            'fecha_entrega' => 'sometimes|nullable|date',
         ];
     }
 }

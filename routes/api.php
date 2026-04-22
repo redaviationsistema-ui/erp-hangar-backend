@@ -44,6 +44,9 @@ Route::prefix('v1')->group(function () {
             'clientes' => 'cliente',
         ]);
         Route::get('/clientes/{cliente}/portal-dashboard', [ClientePortalController::class, 'adminDashboard']);
+        Route::post('/clientes/{cliente}/portal-facturas', [ClientePortalController::class, 'adminStoreInvoice']);
+        Route::put('/clientes/{cliente}/portal-facturas/{invoice}', [ClientePortalController::class, 'adminUpdateInvoice']);
+        Route::delete('/clientes/{cliente}/portal-facturas/{invoice}', [ClientePortalController::class, 'adminDeleteInvoice']);
         Route::post('/clientes/{cliente}/portal-selecciones-pago', [ClientePortalController::class, 'adminSelectPaymentMethod']);
         Route::post('/clientes/{cliente}/portal-incidencias', [ClientePortalController::class, 'adminReportIncident']);
         Route::apiResource('areas', AreaController::class);

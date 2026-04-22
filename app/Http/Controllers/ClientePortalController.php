@@ -8,8 +8,11 @@ use App\Models\ClientePortalInvoice;
 use App\Models\ClientePortalPaymentMethod;
 use App\Models\ClientePortalPaymentSelection;
 use App\Models\Orden;
+use App\Models\Refaccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ClientePortalController extends Controller
 {
@@ -43,6 +46,54 @@ class ClientePortalController extends Controller
         $this->authorizeAdminManagement($request);
 
         return $this->storePaymentSelection($request, $cliente);
+    }
+
+    public function adminStoreInvoice(Request $request, Cliente $cliente)
+    {
+        $this->authorizeAdminManagement($request);
+
+        $invoice = ClientePortalInvoice::create($this->invoicePayload($request, $cliente));
+        $this->ensureInvoiceDocument($invoice, $cliente);
+        $invoice->load(['orden:id,folio', 'latestPaymentSelection.paymentMethod:id,name']);
+        $this->bustDashboardCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Factura registrada correctamente en el portal del cliente.',
+            'data' => $this->transformInvoice($invoice),
+        ], 201);
+    }
+
+    public function adminUpdateInvoice(Request $request, Cliente $cliente, ClientePortalInvoice $invoice)
+    {
+        $this->authorizeAdminManagement($request);
+        abort_unless($invoice->cliente_id === $cliente->id, 404, 'No se encontro la factura del cliente.');
+
+        $invoice->fill($this->invoicePayload($request, $cliente, updating: true));
+        $invoice->save();
+        $this->ensureInvoiceDocument($invoice, $cliente, force: ! $request->filled('pdf_url'));
+        $invoice->load(['orden:id,folio', 'latestPaymentSelection.paymentMethod:id,name']);
+        $this->bustDashboardCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Factura actualizada correctamente.',
+            'data' => $this->transformInvoice($invoice),
+        ]);
+    }
+
+    public function adminDeleteInvoice(Request $request, Cliente $cliente, ClientePortalInvoice $invoice)
+    {
+        $this->authorizeAdminManagement($request);
+        abort_unless($invoice->cliente_id === $cliente->id, 404, 'No se encontro la factura del cliente.');
+
+        $invoice->delete();
+        $this->bustDashboardCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Factura eliminada correctamente.',
+        ]);
     }
 
     public function reportIncident(Request $request)
@@ -134,6 +185,8 @@ class ClientePortalController extends Controller
             ->limit(20)
             ->get();
 
+        $pendingParts = $this->pendingPartsForCustomer($cliente);
+
         $otAsignada = $cliente->otAsignadaOrden;
 
         return [
@@ -192,22 +245,9 @@ class ClientePortalController extends Controller
                 ] : null,
             ] : null,
             'invoices' => $invoices->map(fn (ClientePortalInvoice $invoice) => [
-                'id' => $invoice->id,
-                'folio' => $invoice->folio,
-                'concepto' => $invoice->concepto,
-                'amount_total' => (float) $invoice->amount_total,
-                'currency' => $invoice->currency,
-                'status' => $invoice->status,
-                'issued_at' => optional($invoice->issued_at)->toDateString(),
-                'due_at' => optional($invoice->due_at)->toDateString(),
-                'pdf_url' => $invoice->pdf_url,
-                'notes' => $invoice->notes,
-                'orden' => $invoice->orden ? [
-                    'id' => $invoice->orden->id,
-                    'folio' => $invoice->orden->folio,
-                ] : null,
-                'selected_payment_method' => $invoice->latestPaymentSelection?->paymentMethod?->name,
+                ...$this->transformInvoice($invoice),
             ])->values(),
+            'pending_parts' => $pendingParts,
             'payment_methods' => $paymentMethods->map(fn (ClientePortalPaymentMethod $method) => [
                 'id' => $method->id,
                 'code' => $method->code,
@@ -234,6 +274,57 @@ class ClientePortalController extends Controller
                 ] : null,
             ])->values(),
         ];
+    }
+
+    private function pendingPartsForCustomer(Cliente $cliente): array
+    {
+        $orderIds = $cliente->relatedOrdersQuery()
+            ->select('ordenes.id')
+            ->pluck('ordenes.id');
+
+        if ($orderIds->isEmpty()) {
+            return [];
+        }
+
+        return Refaccion::query()
+            ->with('orden:id,folio')
+            ->whereIn('orden_id', $orderIds)
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', '')
+                    ->orWhereRaw("lower(status) like '%pendiente%'")
+                    ->orWhereRaw("lower(status) like '%autorizar%'")
+                    ->orWhereRaw("lower(status) like '%cotiz%'");
+            })
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', '')
+                    ->orWhere(function ($statusQuery) {
+                        $statusQuery
+                            ->whereRaw("lower(status) not like '%autorizado comprado%'")
+                            ->whereRaw("lower(status) not like '%entregado%'")
+                            ->whereRaw("lower(status) not like '%cancel%'")
+                            ->whereRaw("lower(status) not like '%rechaz%'");
+                    });
+            })
+            ->latest('id')
+            ->limit(30)
+            ->get()
+            ->map(fn (Refaccion $item) => [
+                'id' => $item->id,
+                'orden_id' => $item->orden_id,
+                'orden_folio' => $item->orden?->folio,
+                'descripcion' => $item->nombre ?: $item->descripcion,
+                'razon' => $item->descripcion,
+                'cantidad' => (int) ($item->cantidad ?: 0),
+                'numero_parte' => $item->numero_parte,
+                'precio' => (float) ($item->precio_venta ?: $item->costo_total ?: 0),
+                'currency' => 'MXN',
+                'status' => $item->status ?: 'Pendiente por autorizar',
+                'fecha_entrega' => optional($item->fecha_entrega)->toDateString(),
+            ])
+            ->values()
+            ->all();
     }
 
     private function cachedDashboardPayload(Cliente $cliente): array
@@ -299,6 +390,161 @@ class ClientePortalController extends Controller
                 'reference' => $selection->reference,
             ],
         ], 201);
+    }
+
+    private function invoicePayload(Request $request, Cliente $cliente, bool $updating = false): array
+    {
+        $rules = [
+            'orden_id' => 'nullable|integer|exists:ordenes,id',
+            'folio' => ($updating ? 'sometimes|' : 'required|') . 'string|max:255',
+            'concepto' => ($updating ? 'sometimes|' : 'required|') . 'string|max:255',
+            'amount_total' => ($updating ? 'sometimes|' : 'required|') . 'numeric|min:0',
+            'currency' => 'nullable|string|max:8',
+            'status' => 'nullable|string|max:50',
+            'issued_at' => 'nullable|date',
+            'due_at' => 'nullable|date',
+            'pdf_url' => 'nullable|string|max:2048',
+            'notes' => 'nullable|string',
+        ];
+
+        $data = $request->validate($rules);
+
+        if (array_key_exists('orden_id', $data) && ! empty($data['orden_id'])) {
+            $orden = $cliente->relatedOrdersQuery()
+                ->whereKey($data['orden_id'])
+                ->firstOrFail();
+            $data['orden_id'] = $orden->id;
+        }
+
+        if (! $updating) {
+            $data['cliente_id'] = $cliente->id;
+        }
+
+        if (array_key_exists('currency', $data)) {
+            $data['currency'] = strtoupper(trim((string) ($data['currency'] ?: 'MXN')));
+        } elseif (! $updating) {
+            $data['currency'] = 'MXN';
+        }
+
+        if (array_key_exists('status', $data)) {
+            $data['status'] = trim((string) ($data['status'] ?: 'pendiente'));
+        } elseif (! $updating) {
+            $data['status'] = 'pendiente';
+        }
+
+        return $data;
+    }
+
+    private function transformInvoice(ClientePortalInvoice $invoice): array
+    {
+        return [
+            'id' => $invoice->id,
+            'folio' => $invoice->folio,
+            'concepto' => $invoice->concepto,
+            'amount_total' => (float) $invoice->amount_total,
+            'currency' => $invoice->currency,
+            'status' => $invoice->status,
+            'issued_at' => optional($invoice->issued_at)->toDateString(),
+            'due_at' => optional($invoice->due_at)->toDateString(),
+            'pdf_url' => $invoice->pdf_url,
+            'notes' => $invoice->notes,
+            'orden_id' => $invoice->orden_id,
+            'orden' => $invoice->orden ? [
+                'id' => $invoice->orden->id,
+                'folio' => $invoice->orden->folio,
+            ] : null,
+            'selected_payment_method' => $invoice->latestPaymentSelection?->paymentMethod?->name,
+        ];
+    }
+
+    private function ensureInvoiceDocument(
+        ClientePortalInvoice $invoice,
+        Cliente $cliente,
+        bool $force = false
+    ): void {
+        if (! $force && filled($invoice->pdf_url)) {
+            return;
+        }
+
+        $path = 'facturas-clientes/factura-' . $invoice->id . '.pdf';
+        Storage::disk('public')->put($path, $this->buildInvoicePdf($invoice, $cliente));
+
+        $invoice->forceFill([
+            'pdf_url' => Storage::disk('public')->url($path),
+        ])->save();
+    }
+
+    private function buildInvoicePdf(ClientePortalInvoice $invoice, Cliente $cliente): string
+    {
+        $lines = [
+            'RED AVIATION',
+            'Factura / Documento de cobro',
+            '',
+            'Folio: ' . $invoice->folio,
+            'Cliente: ' . ($cliente->razon_social ?: $cliente->nombre_comercial ?: $cliente->contacto_nombre),
+            'RFC: ' . ($cliente->rfc ?: '-'),
+            'Contacto: ' . ($cliente->contacto_nombre ?: '-'),
+            'Correo: ' . ($cliente->email ?: '-'),
+            'Concepto: ' . $invoice->concepto,
+            'Total: ' . $invoice->currency . ' ' . number_format((float) $invoice->amount_total, 2),
+            'Estatus: ' . ($invoice->status ?: 'pendiente'),
+            'Emision: ' . (optional($invoice->issued_at)->toDateString() ?: now()->toDateString()),
+            'Vencimiento: ' . (optional($invoice->due_at)->toDateString() ?: '-'),
+            'Orden: ' . ($invoice->orden?->folio ?: ($invoice->orden_id ? '#' . $invoice->orden_id : '-')),
+            '',
+            'Notas: ' . ($invoice->notes ?: '-'),
+            '',
+            'Este documento se genero desde el portal administrativo.',
+        ];
+
+        return $this->minimalPdf($lines);
+    }
+
+    private function minimalPdf(array $lines): string
+    {
+        $content = "BT\n/F1 18 Tf\n72 760 Td\n(RED AVIATION) Tj\n";
+        $content .= "/F1 11 Tf\n0 -28 Td\n";
+
+        foreach (array_slice($lines, 1) as $line) {
+            $content .= '(' . $this->pdfText($line) . ") Tj\n0 -18 Td\n";
+        }
+
+        $content .= "ET\n";
+        $objects = [
+            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+            "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+            "5 0 obj\n<< /Length " . strlen($content) . " >>\nstream\n$content\nendstream\nendobj\n",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+        }
+
+        $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n$xrefOffset\n%%EOF\n";
+
+        return $pdf;
+    }
+
+    private function pdfText(string $text): string
+    {
+        $text = Str::ascii($text);
+
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
     }
 
     private function storeIncident(Request $request, Cliente $cliente)
