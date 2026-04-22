@@ -18,6 +18,7 @@ return new class extends Migration {
             $table->text('descripcion');
             $table->text('accion_correctiva')->nullable();
             $table->string('status')->default('pendiente');
+            $table->string('tecnico')->nullable();
             $table->timestamps();
         });
     }

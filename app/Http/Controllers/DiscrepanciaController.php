@@ -55,6 +55,7 @@ class DiscrepanciaController extends Controller
     {
         $this->authorizeTecnicoOnly($request);
         $data = $this->validatePayload($request, false);
+        $this->fillDefaultTecnico($request, $data);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'discrepancias', [
             'foto',
             'imagen',
@@ -91,6 +92,7 @@ class DiscrepanciaController extends Controller
         $this->authorizeOrderArea($request, $discrepancia);
         $this->authorizeTecnicoOnly($request);
         $data = $this->validatePayload($request, true);
+        $this->fillDefaultTecnico($request, $data);
         $this->storeIncomingImage($request, $data, 'imagen_path', 'discrepancias', [
             'foto',
             'imagen',
@@ -153,6 +155,20 @@ class DiscrepanciaController extends Controller
             'componente_numero_serie_on' => 'sometimes|nullable|string|max:255',
             'observaciones' => 'sometimes|nullable|string',
         ]);
+    }
+
+    private function fillDefaultTecnico(Request $request, array &$data): void
+    {
+        $tecnico = trim((string) ($data['tecnico'] ?? ''));
+        if ($tecnico !== '') {
+            $data['tecnico'] = $tecnico;
+            return;
+        }
+
+        $userName = trim((string) ($request->user()?->name ?? ''));
+        if ($userName !== '') {
+            $data['tecnico'] = $userName;
+        }
     }
 
     private function cacheKey(string $action, array $params = []): string

@@ -57,7 +57,14 @@ class PublicStoragePath
 
     public static function url(string $path): string
     {
-        return asset('storage/' . ltrim(str_replace('\\', '/', $path), '/'));
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        $storagePath = 'storage/' . ltrim(str_replace('\\', '/', $path), '/');
+
+        if ($baseUrl !== '') {
+            return $baseUrl . '/' . $storagePath;
+        }
+
+        return asset($storagePath);
     }
 
     private static function normalizeKnownStoragePath(string $value): ?string

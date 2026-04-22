@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardController extends Controller
 {
-    private const CACHE_SCHEMA_VERSION = 5;
+    private const CACHE_SCHEMA_VERSION = 6;
 
     public function resumen(Request $request)
     {
@@ -61,7 +61,11 @@ class AdminDashboardController extends Controller
         $ndt = $this->aggregateItemsByOrder('ndt', $ordenIdsQuery, false, false, true, false);
         $discrepancias = DB::table('discrepancias')
             ->joinSub($ordenIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
-            ->select('discrepancias.orden_id', DB::raw('COALESCE(SUM(horas_hombre), 0) as horas_hombre_sum'))
+            ->select([
+                'discrepancias.orden_id',
+                DB::raw('COALESCE(SUM(horas_hombre), 0) as horas_hombre_sum'),
+                DB::raw("GROUP_CONCAT(DISTINCT NULLIF(TRIM(discrepancias.tecnico), '') ORDER BY discrepancias.id SEPARATOR ' | ') as tecnico_resumen"),
+            ])
             ->groupBy('discrepancias.orden_id')
             ->get()
             ->keyBy('orden_id');
@@ -206,7 +210,7 @@ class AdminDashboardController extends Controller
             $margenOt = $ventaOt - $costoOt;
             $horasTrabajadas = round(((float) ($tarea->minutos_sum ?? 0)) / 60, 2);
             $tecnicoPrincipal = $this->safeText(
-                $tareaTecnicos->first()->tecnico ?? null,
+                $tareaTecnicos->first()->tecnico ?? $discrepancia->tecnico_resumen ?? null,
                 'Sin tecnico'
             );
 
@@ -215,6 +219,8 @@ class AdminDashboardController extends Controller
             $porArea[$area] = ($porArea[$area] ?? 0) + $costoOt;
             $porOt[$folio] = ($porOt[$folio] ?? 0) + $costoOt;
             $topOtRows[] = [
+                'id' => $orden->id,
+                'orden_id' => $orden->id,
                 'folio' => $folio,
                 'cliente' => $cliente,
                 'matricula' => $matricula,
@@ -222,6 +228,7 @@ class AdminDashboardController extends Controller
                 'estado' => $this->safeText($orden->estado, 'Sin estado'),
                 'tecnico' => $tecnicoPrincipal,
                 'horas_trabajadas' => $horasTrabajadas,
+                'horas_labor_discrepancias' => round((float) ($discrepancia->horas_hombre_sum ?? 0), 2),
                 'costo' => round($costoOt, 2),
                 'venta' => round($ventaOt, 2),
                 'margen' => round($margenOt, 2),

@@ -546,6 +546,18 @@ class OrdenController extends Controller
             $this->storeIncomingImageFromData($item, $targetKey, $directory, $aliases);
         }
 
+        if ($relation === 'discrepancias') {
+            $tecnico = trim((string) ($item['tecnico'] ?? ''));
+            if ($tecnico === '') {
+                $userName = trim((string) (request()->user()?->name ?? ''));
+                if ($userName !== '') {
+                    $item['tecnico'] = $userName;
+                }
+            } else {
+                $item['tecnico'] = $tecnico;
+            }
+        }
+
         return $item;
     }
 

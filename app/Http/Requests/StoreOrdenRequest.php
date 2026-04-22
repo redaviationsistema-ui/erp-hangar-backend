@@ -95,6 +95,7 @@ class StoreOrdenRequest extends FormRequest
             'discrepancias.*.descripcion' => 'required_with:discrepancias|string',
             'discrepancias.*.accion_correctiva' => 'nullable|string',
             'discrepancias.*.status' => 'nullable|string|max:100',
+            'discrepancias.*.tecnico' => 'nullable|string|max:255',
             'discrepancias.*.inspector' => 'nullable|string|max:255',
             'discrepancias.*.fecha_inicio' => 'nullable|date',
             'discrepancias.*.fecha_termino' => 'nullable|date',
