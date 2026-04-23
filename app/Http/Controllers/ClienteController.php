@@ -139,7 +139,7 @@ class ClienteController extends Controller
             $this->cacheKey('show', ['id' => $cliente->id]),
             Carbon::now()->addMinutes(5),
             function () use ($cliente, $request) {
-                $previewOrders = $cliente->ordenesAsignadas()
+                $previewOrders = $cliente->relatedOrdersQuery()
                     ->select(['ordenes.id', 'ordenes.area_id', 'ordenes.folio', 'ordenes.estado', 'ordenes.descripcion', 'ordenes.matricula'])
                     ->with('area:id,nombre,codigo')
                     ->latest('ordenes.id')
@@ -151,6 +151,7 @@ class ClienteController extends Controller
                     'otAsignadaOrden.area:id,nombre,codigo',
                 ])->loadCount('ordenesAsignadas');
                 $cliente->setRelation('ordenesAsignadasPreview', $previewOrders);
+                $cliente->ordenes_asignadas_count = $previewOrders->count();
 
                 return [
                     'success' => true,

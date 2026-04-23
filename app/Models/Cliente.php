@@ -127,21 +127,33 @@ class Cliente extends Authenticatable
 
     public function relatedOrdersQuery(): Builder
     {
-        $names = $this->relatedOrderNames();
-        $orderIdsQuery = DB::table('cliente_orden')
-            ->select('orden_id')
-            ->where('cliente_id', $this->id);
+        $explicitOrderIds = DB::table('cliente_orden')
+            ->where('cliente_id', $this->id)
+            ->pluck('orden_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        if (! empty($names)) {
-            $orderIdsQuery = $orderIdsQuery->union(
-                DB::table('ordenes')
-                    ->selectRaw('id as orden_id')
-                    ->whereIn('cliente', $names)
-            );
+        if ($this->ot_asignada_id) {
+            $explicitOrderIds[] = (int) $this->ot_asignada_id;
         }
+
+        $explicitOrderIds = array_values(array_unique($explicitOrderIds));
+
+        if (! empty($explicitOrderIds)) {
+            return Orden::query()
+                ->with(['area:id,nombre,codigo'])
+                ->whereIn('ordenes.id', $explicitOrderIds);
+        }
+
+        $names = $this->relatedOrderNames();
 
         return Orden::query()
             ->with(['area:id,nombre,codigo'])
-            ->whereIn('ordenes.id', $orderIdsQuery);
+            ->when(
+                ! empty($names),
+                fn (Builder $query) => $query->whereIn('ordenes.cliente', $names),
+                fn (Builder $query) => $query->whereRaw('1 = 0'),
+            );
     }
 }

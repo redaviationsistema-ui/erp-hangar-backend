@@ -536,6 +536,7 @@ class OrdenController extends Controller
         $imageMappings = [
             'tareas' => ['foto_path', 'tareas', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
             'discrepancias' => ['imagen_path', 'discrepancias', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
+            'refacciones' => ['certificado_conformidad_imagen', 'refacciones', ['certificado_conformidad_imagen', 'certificado_conformidad_imagen_base64', 'certificado_conformidad_foto', 'certificado_conformidad_imagen_file']],
             'ndt' => ['evidencia_path', 'ndt', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
             'talleresExternos' => ['foto_path', 'talleres-externos', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
             'mediciones' => ['imagen_path', 'mediciones', ['foto', 'imagen', 'image', 'evidencia', 'foto_base64', 'imagen_base64', 'evidencia_base64']],
@@ -543,7 +544,13 @@ class OrdenController extends Controller
 
         if (array_key_exists($relation, $imageMappings)) {
             [$targetKey, $directory, $aliases] = $imageMappings[$relation];
-            $this->storeIncomingImageFromData($item, $targetKey, $directory, $aliases);
+            $this->storeIncomingImageFromData(
+                $item,
+                $targetKey,
+                $directory,
+                $aliases,
+                requireCloudinary: in_array($relation, ['ndt', 'refacciones'], true)
+            );
         }
 
         if ($relation === 'discrepancias') {

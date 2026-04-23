@@ -378,7 +378,14 @@ abstract class Controller
         }
     }
 
-    protected function storeIncomingImage(Request $request, array &$data, string $targetKey, string $directory, array $aliases = []): void
+    protected function storeIncomingImage(
+        Request $request,
+        array &$data,
+        string $targetKey,
+        string $directory,
+        array $aliases = [],
+        bool $requireCloudinary = true
+    ): void
     {
         $keys = $this->imageInputKeys($targetKey, $aliases);
 
@@ -386,7 +393,7 @@ abstract class Controller
             $uploadedFile = $request->file($key);
 
             if ($uploadedFile instanceof UploadedFile && $uploadedFile->isValid()) {
-                $data[$targetKey] = $this->storeUploadedImage($uploadedFile, $directory);
+                $data[$targetKey] = $this->storeUploadedImage($uploadedFile, $directory, $requireCloudinary);
 
                 return;
             }
@@ -397,7 +404,7 @@ abstract class Controller
                 continue;
             }
 
-            $storedPath = $this->storeBase64Image($value, $directory);
+            $storedPath = $this->storeBase64Image($value, $directory, $requireCloudinary);
 
             if ($storedPath !== null) {
                 $data[$targetKey] = $storedPath;
@@ -411,7 +418,13 @@ abstract class Controller
         }
     }
 
-    protected function storeIncomingImageFromData(array &$data, string $targetKey, string $directory, array $aliases = []): void
+    protected function storeIncomingImageFromData(
+        array &$data,
+        string $targetKey,
+        string $directory,
+        array $aliases = [],
+        bool $requireCloudinary = true
+    ): void
     {
         $keys = $this->imageInputKeys($targetKey, $aliases);
 
@@ -422,7 +435,7 @@ abstract class Controller
                 continue;
             }
 
-            $storedPath = $this->storeBase64Image($value, $directory);
+            $storedPath = $this->storeBase64Image($value, $directory, $requireCloudinary);
 
             if ($storedPath !== null) {
                 $data[$targetKey] = $storedPath;
@@ -548,7 +561,7 @@ abstract class Controller
         };
     }
 
-    private function storeBase64Image(string $value, string $directory): ?string
+    private function storeBase64Image(string $value, string $directory, bool $requireCloudinary = true): ?string
     {
         if (! preg_match('/^data:image\/(?P<extension>[a-zA-Z0-9.+-]+);base64,(?P<data>.+)$/', trim($value), $matches)) {
             return null;
@@ -577,14 +590,14 @@ abstract class Controller
             return $this->uploadToCloudinary($binary, $path);
         }
 
-        $this->ensureLocalImageStorageAllowed();
+        $this->ensureLocalImageStorageAllowed($requireCloudinary);
 
         Storage::disk('public')->put($path, $binary);
 
         return $path;
     }
 
-    private function storeUploadedImage(UploadedFile $uploadedFile, string $directory): string
+    private function storeUploadedImage(UploadedFile $uploadedFile, string $directory, bool $requireCloudinary = true): string
     {
         $path = trim($directory, '/') . '/' . Str::uuid() . '.' . $uploadedFile->getClientOriginalExtension();
 
@@ -598,20 +611,20 @@ abstract class Controller
             return $this->uploadToCloudinary($binary, $path);
         }
 
-        $this->ensureLocalImageStorageAllowed();
+        $this->ensureLocalImageStorageAllowed($requireCloudinary);
 
         return $uploadedFile->store($directory, 'public');
     }
 
-    private function ensureLocalImageStorageAllowed(): void
+    private function ensureLocalImageStorageAllowed(bool $requireCloudinary = true): void
     {
-        if (! app()->environment('production')) {
+        if (! $requireCloudinary && ! app()->environment('production')) {
             return;
         }
 
         throw new RuntimeException(
-            'Cloudinary no esta configurado en el backend de produccion. '
-            . 'Configura CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en Render.'
+            'Cloudinary no esta configurado en el backend. '
+            . 'Configura CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET.'
         );
     }
 

@@ -47,7 +47,7 @@ class RefaccionController extends Controller
             'certificado_conformidad_imagen_base64',
             'certificado_conformidad_foto',
             'certificado_conformidad_imagen_file',
-        ]);
+        ], requireCloudinary: true);
         $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         $this->authorizeInventoryPricingIfPresent($request, $data);
 
@@ -94,7 +94,7 @@ class RefaccionController extends Controller
             'certificado_conformidad_imagen_base64',
             'certificado_conformidad_foto',
             'certificado_conformidad_imagen_file',
-        ]);
+        ], requireCloudinary: true);
         $this->authorizeInventoryPricingIfPresent($request, $data);
         if (array_key_exists('orden_id', $data)) {
             $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);

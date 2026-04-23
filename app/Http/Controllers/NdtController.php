@@ -54,7 +54,7 @@ class NdtController extends Controller
             'foto_base64',
             'imagen_base64',
             'evidencia_base64',
-        ]);
+        ], requireCloudinary: true);
         $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         $this->authorizeInventoryPricingIfPresent($request, $data);
 
@@ -108,7 +108,7 @@ class NdtController extends Controller
             'foto_base64',
             'imagen_base64',
             'evidencia_base64',
-        ]);
+        ], requireCloudinary: true);
         if (array_key_exists('orden_id', $data)) {
             $this->authorizeAreaId($request, \App\Models\Orden::findOrFail($data['orden_id'])->area_id);
         }
