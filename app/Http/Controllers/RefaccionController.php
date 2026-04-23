@@ -138,7 +138,7 @@ class RefaccionController extends Controller
             'numero_parte' => 'sometimes|nullable|string|max:255',
             'status' => 'sometimes|nullable|string|max:100',
             'certificado_conformidad' => 'sometimes|nullable|string|max:255',
-            'certificado_conformidad_imagen' => 'sometimes|nullable|string|max:2048',
+            'certificado_conformidad_imagen' => 'sometimes|nullable',
             'certificado_conformidad_foto' => 'sometimes|nullable|image|max:5120',
             'certificado_conformidad_imagen_base64' => 'sometimes|nullable|string',
             'certificado_conformidad_imagen_file' => 'sometimes|nullable|image|max:5120',

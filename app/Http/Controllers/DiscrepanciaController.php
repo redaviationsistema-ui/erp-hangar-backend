@@ -144,7 +144,7 @@ class DiscrepanciaController extends Controller
             'fecha_inicio' => 'sometimes|nullable|date',
             'fecha_termino' => 'sometimes|nullable|date',
             'horas_hombre' => 'sometimes|nullable|numeric',
-            'imagen_path' => 'sometimes|nullable|string|max:2048',
+            'imagen_path' => 'sometimes|nullable',
             'foto' => 'sometimes|nullable|image|max:5120',
             'imagen' => 'sometimes|nullable|image|max:5120',
             'image' => 'sometimes|nullable|image|max:5120',

@@ -655,7 +655,6 @@ abstract class Controller
         ], $apiSecret);
 
         $response = Http::attach('file', $binary, basename($path))
-            ->asMultipart()
             ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", [
                 'api_key' => $apiKey,
                 'public_id' => $publicId,
