@@ -26,6 +26,7 @@ class ClienteResource extends JsonResource
             ->sortByDesc('id')
             ->take(10)
             ->values();
+            
 
         if ($relatedOrders->isEmpty() && $otAsignada) {
             $relatedOrders = collect([$otAsignada]);
