@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Area;
 use App\Models\AtaSubchapter;
 use App\Models\Motor;
+use App\Models\Orden;
 use App\Models\TipoOrden;
 use App\Models\User;
 use Database\Seeders\AreaSeeder;
@@ -110,6 +111,61 @@ class OrdenApiTest extends TestCase
 
         $response->assertJsonMissingPath('data.0.tareas.0');
         $response->assertJsonMissingPath('data.0.discrepancias.0');
+    }
+
+    public function test_compras_user_can_list_orders_across_technical_areas(): void
+    {
+        $this->seed();
+
+        $avcs = Area::where('codigo', 'AVCS')->firstOrFail();
+        $hang = Area::where('codigo', 'HANG')->firstOrFail();
+        $comprasArea = Area::firstOrCreate(
+            ['codigo' => 'COMPRAS'],
+            ['nombre' => 'Compras', 'numero' => '98']
+        );
+        $avcsTipo = TipoOrden::where('codigo', 'AVCS')->firstOrFail();
+        $hangTipo = TipoOrden::where('codigo', 'HANG')->firstOrFail();
+        $compras = User::create([
+            'name' => 'Compras',
+            'email' => 'compras@redaviation.com',
+            'password' => 'secret123',
+            'area_id' => $comprasArea->id,
+            'rol' => 'compras',
+            'rol_nombre' => 'compras',
+        ]);
+
+        Orden::create([
+            'area_id' => $avcs->id,
+            'tipo_id' => $avcsTipo->id,
+            'user_id' => $compras->id,
+            'consecutivo' => 9001,
+            'anio' => 2026,
+            'folio' => 'CESA-AVCS26-COMPRAS',
+            'descripcion' => 'OT visible para compras AVCS',
+            'estado' => 'abierta',
+            'fecha' => now(),
+        ]);
+        Orden::create([
+            'area_id' => $hang->id,
+            'tipo_id' => $hangTipo->id,
+            'user_id' => $compras->id,
+            'consecutivo' => 9002,
+            'anio' => 2026,
+            'folio' => 'CESA-HANG26-COMPRAS',
+            'descripcion' => 'OT visible para compras HANG',
+            'estado' => 'abierta',
+            'fecha' => now(),
+        ]);
+
+        $this->authenticateAsUser($compras);
+
+        $response = $this->getJson('/api/v1/ordenes?fast=0&per_page=100');
+
+        $response->assertOk();
+        $folios = collect($response->json('data'))->pluck('folio');
+
+        $this->assertTrue($folios->contains('CESA-AVCS26-COMPRAS'));
+        $this->assertTrue($folios->contains('CESA-HANG26-COMPRAS'));
     }
 
     public function test_it_returns_admin_dashboard_summary_from_backend(): void

@@ -31,7 +31,9 @@ abstract class Controller
         $global = false;
 
         if ($user) {
-            if ($user->rol === 'admin') {
+            if ($this->isComprasUser($request)) {
+                $global = true;
+            } elseif ($user->rol === 'admin') {
                 $global = true;
             } elseif (in_array($user->rol, ['supervisor', 'administracion'], true)) {
                 if ($user->area_id === null) {
@@ -726,4 +728,3 @@ abstract class Controller
         return $matches['public_id'] ?? null;
     }
 }
-
