@@ -64,9 +64,6 @@ class ConsumibleController extends Controller
             'numero_parte',
             'status',
             'certificado_conformidad',
-            'area_procedencia',
-            'recibe_fecha',
-            'recibe_nombre',
         ]);
         $this->authorizeInventoryPricingIfPresent($request, $data);
         if (array_key_exists('orden_id', $data)) {

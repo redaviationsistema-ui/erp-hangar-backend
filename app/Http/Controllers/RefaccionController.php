@@ -83,9 +83,6 @@ class RefaccionController extends Controller
             'certificado_conformidad_imagen_base64',
             'certificado_conformidad_foto',
             'certificado_conformidad_imagen_file',
-            'area_procedencia',
-            'recibe_fecha',
-            'recibe_nombre',
         ]);
         $this->storeIncomingImage($request, $data, 'certificado_conformidad_imagen', 'refacciones', [
             'certificado_conformidad_imagen',

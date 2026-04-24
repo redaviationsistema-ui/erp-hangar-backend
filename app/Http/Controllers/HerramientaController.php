@@ -61,8 +61,6 @@ class HerramientaController extends Controller
             'numero_parte',
             'status',
             'certificado_conformidad',
-            'area_procedencia',
-            'recibe_fecha',
         ]);
         $this->authorizeInventoryPricingIfPresent($request, $data);
         if (array_key_exists('orden_id', $data)) {

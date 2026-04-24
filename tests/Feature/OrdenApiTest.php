@@ -216,9 +216,14 @@ class OrdenApiTest extends TestCase
         $this->authenticateAsUser($compras);
 
         $this->putJson('/api/v1/refacciones/' . $refaccionId, [
+            'area_procedencia' => 'ALMACEN GENERAL',
+            'recibe_fecha' => '2026-04-24',
+            'recibe_nombre' => 'Compras',
             'costo_total' => 875.5,
             'fecha_entrega' => '2026-04-24',
         ])->assertOk()
+            ->assertJsonPath('data.area_procedencia', 'ALMACEN GENERAL')
+            ->assertJsonPath('data.recibe_nombre', 'Compras')
             ->assertJsonPath('data.costo_total', '875.50')
             ->assertJsonPath('data.fecha_entrega', '2026-04-24T00:00:00.000000Z');
     }
