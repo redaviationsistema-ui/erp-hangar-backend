@@ -347,7 +347,7 @@ abstract class Controller
 
     protected function authorizeInventoryPricingIfPresent(Request $request, array $payload): void
     {
-        $costKeys = ['costo_total', 'costo'];
+        $costKeys = ['costo_total', 'costo', 'fecha_entrega'];
 
         foreach ($costKeys as $costKey) {
             if (array_key_exists($costKey, $payload) && ! $this->canCaptureInventoryCost($request)) {

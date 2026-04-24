@@ -168,6 +168,61 @@ class OrdenApiTest extends TestCase
         $this->assertTrue($folios->contains('CESA-HANG26-COMPRAS'));
     }
 
+    public function test_compras_user_can_update_refaccion_cost_and_delivery_date(): void
+    {
+        $this->seed();
+
+        $avcs = Area::where('codigo', 'AVCS')->firstOrFail();
+        $avcsTipo = TipoOrden::where('codigo', 'AVCS')->firstOrFail();
+        $comprasArea = Area::firstOrCreate(
+            ['codigo' => 'COMPRAS'],
+            ['nombre' => 'Compras', 'numero' => '98']
+        );
+        $tecnico = User::create([
+            'name' => 'Tecnico Refaccion',
+            'email' => 'tecnico-refaccion@redaviation.com',
+            'password' => 'secret123',
+            'area_id' => $avcs->id,
+            'rol' => 'tecnico',
+        ]);
+        $compras = User::create([
+            'name' => 'Compras Refaccion',
+            'email' => 'compras-refaccion@redaviation.com',
+            'password' => 'secret123',
+            'area_id' => $comprasArea->id,
+            'rol' => 'compras',
+            'rol_nombre' => 'compras',
+        ]);
+
+        $this->authenticateAsUser($tecnico);
+
+        $ordenId = $this->postJson('/api/v1/ordenes', [
+            'area_id' => $avcs->id,
+            'tipo_id' => $avcsTipo->id,
+            'user_id' => $tecnico->id,
+            'descripcion' => 'OT para compra de refaccion',
+            'estado' => 'abierta',
+            'generar_tareas_ata' => false,
+        ])->assertCreated()->json('data.id');
+
+        $refaccionId = $this->postJson('/api/v1/refacciones', [
+            'orden_id' => $ordenId,
+            'item' => '01',
+            'nombre' => 'Filtro',
+            'descripcion' => 'Filtro de prueba para compras',
+            'cantidad' => 1,
+        ])->assertCreated()->json('data.id');
+
+        $this->authenticateAsUser($compras);
+
+        $this->putJson('/api/v1/refacciones/' . $refaccionId, [
+            'costo_total' => 875.5,
+            'fecha_entrega' => '2026-04-24',
+        ])->assertOk()
+            ->assertJsonPath('data.costo_total', '875.50')
+            ->assertJsonPath('data.fecha_entrega', '2026-04-24T00:00:00.000000Z');
+    }
+
     public function test_it_returns_admin_dashboard_summary_from_backend(): void
     {
         $this->seed();
