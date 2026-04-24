@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardController extends Controller
 {
-    private const CACHE_SCHEMA_VERSION = 7;
+    private const CACHE_SCHEMA_VERSION = 8;
 
     public function resumen(Request $request)
     {
@@ -59,26 +59,7 @@ class AdminDashboardController extends Controller
         $consumibles = $this->aggregateItemsByOrder('consumibles', $ordenIdsQuery, true, true, true, true);
         $talleres = $this->aggregateItemsByOrder('taller_externos', $ordenIdsQuery, false, false, true, false, 'costo');
         $ndt = $this->aggregateItemsByOrder('ndt', $ordenIdsQuery, false, false, true, false);
-        $discrepancias = DB::table('discrepancias')
-            ->joinSub($ordenIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
-            ->select([
-                'discrepancias.orden_id',
-                'discrepancias.id',
-                'discrepancias.tecnico',
-                'discrepancias.horas_hombre',
-            ])
-            ->orderBy('discrepancias.orden_id')
-            ->orderBy('discrepancias.id')
-            ->get()
-            ->groupBy('orden_id')
-            ->map(fn (Collection $rows) => (object) [
-                'horas_hombre_sum' => $rows->sum(fn ($row) => (float) ($row->horas_hombre ?? 0)),
-                'tecnico_resumen' => $rows
-                    ->map(fn ($row) => trim((string) ($row->tecnico ?? '')))
-                    ->filter()
-                    ->unique()
-                    ->implode(' | '),
-            ]);
+        $discrepancias = $this->aggregateDiscrepanciasByOrder($ordenIdsQuery);
         $tareas = DB::table('tareas')
             ->joinSub($ordenIdsQuery, 'ordenes', fn ($join) => $join->on('tareas.orden_id', '=', 'ordenes.id'))
             ->select('tareas.orden_id', DB::raw('COALESCE(SUM(tiempo_estimado_min), 0) as minutos_sum'))
@@ -315,6 +296,59 @@ class AdminDashboardController extends Controller
     {
         return $this->applyAreaScope($request, Orden::query(), 'ordenes.area_id')
             ->select('ordenes.id');
+    }
+
+    private function aggregateDiscrepanciasByOrder(Builder $orderIdsQuery): Collection
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $horas = DB::table('discrepancias')
+                ->joinSub(clone $orderIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
+                ->select([
+                    'discrepancias.orden_id',
+                    DB::raw('COALESCE(SUM(horas_hombre), 0) as horas_hombre_sum'),
+                ])
+                ->groupBy('discrepancias.orden_id')
+                ->get()
+                ->keyBy('orden_id');
+
+            $tecnicos = DB::table('discrepancias')
+                ->joinSub(clone $orderIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
+                ->select([
+                    'discrepancias.orden_id',
+                    DB::raw("STRING_AGG(NULLIF(TRIM(discrepancias.tecnico), ''), ' | ' ORDER BY discrepancias.id) as tecnico_resumen"),
+                ])
+                ->whereRaw("TRIM(COALESCE(discrepancias.tecnico, '')) <> ''")
+                ->groupBy('discrepancias.orden_id')
+                ->get()
+                ->keyBy('orden_id');
+
+            return $horas->map(function ($row, $ordenId) use ($tecnicos) {
+                $row->tecnico_resumen = $tecnicos->get($ordenId)->tecnico_resumen ?? '';
+
+                return $row;
+            });
+        }
+
+        return DB::table('discrepancias')
+            ->joinSub($orderIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
+            ->select([
+                'discrepancias.orden_id',
+                'discrepancias.id',
+                'discrepancias.tecnico',
+                'discrepancias.horas_hombre',
+            ])
+            ->orderBy('discrepancias.orden_id')
+            ->orderBy('discrepancias.id')
+            ->get()
+            ->groupBy('orden_id')
+            ->map(fn (Collection $rows) => (object) [
+                'horas_hombre_sum' => $rows->sum(fn ($row) => (float) ($row->horas_hombre ?? 0)),
+                'tecnico_resumen' => $rows
+                    ->map(fn ($row) => trim((string) ($row->tecnico ?? '')))
+                    ->filter()
+                    ->unique()
+                    ->implode(' | '),
+            ]);
     }
 
     private function cacheKey(Request $request): string
