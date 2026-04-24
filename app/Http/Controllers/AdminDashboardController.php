@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardController extends Controller
 {
-    private const CACHE_SCHEMA_VERSION = 6;
+    private const CACHE_SCHEMA_VERSION = 7;
 
     public function resumen(Request $request)
     {
@@ -63,12 +63,22 @@ class AdminDashboardController extends Controller
             ->joinSub($ordenIdsQuery, 'ordenes', fn ($join) => $join->on('discrepancias.orden_id', '=', 'ordenes.id'))
             ->select([
                 'discrepancias.orden_id',
-                DB::raw('COALESCE(SUM(horas_hombre), 0) as horas_hombre_sum'),
-                DB::raw("GROUP_CONCAT(DISTINCT NULLIF(TRIM(discrepancias.tecnico), '') ORDER BY discrepancias.id SEPARATOR ' | ') as tecnico_resumen"),
+                'discrepancias.id',
+                'discrepancias.tecnico',
+                'discrepancias.horas_hombre',
             ])
-            ->groupBy('discrepancias.orden_id')
+            ->orderBy('discrepancias.orden_id')
+            ->orderBy('discrepancias.id')
             ->get()
-            ->keyBy('orden_id');
+            ->groupBy('orden_id')
+            ->map(fn (Collection $rows) => (object) [
+                'horas_hombre_sum' => $rows->sum(fn ($row) => (float) ($row->horas_hombre ?? 0)),
+                'tecnico_resumen' => $rows
+                    ->map(fn ($row) => trim((string) ($row->tecnico ?? '')))
+                    ->filter()
+                    ->unique()
+                    ->implode(' | '),
+            ]);
         $tareas = DB::table('tareas')
             ->joinSub($ordenIdsQuery, 'ordenes', fn ($join) => $join->on('tareas.orden_id', '=', 'ordenes.id'))
             ->select('tareas.orden_id', DB::raw('COALESCE(SUM(tiempo_estimado_min), 0) as minutos_sum'))
