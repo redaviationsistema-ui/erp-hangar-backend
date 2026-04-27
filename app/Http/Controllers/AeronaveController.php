@@ -97,10 +97,12 @@ class AeronaveController extends Controller
             'matricula' => 'required|string|max:255|unique:aeronaves,matricula',
             'fabricante' => 'nullable|string|max:255',
             'modelo' => 'nullable|string|max:255',
+            'serie' => 'nullable|string|max:255',
             'numero_serie' => 'nullable|string|max:255',
             'estado' => 'nullable|string|max:100',
             'notas' => 'nullable|string',
         ]);
+        $data = $this->normalizeSeriePayload($data);
 
         $aeronave = Aeronave::create($data);
         $this->bustCache();
@@ -119,10 +121,12 @@ class AeronaveController extends Controller
             'matricula' => 'sometimes|string|max:255|unique:aeronaves,matricula,' . $aeronave->id,
             'fabricante' => 'sometimes|nullable|string|max:255',
             'modelo' => 'sometimes|nullable|string|max:255',
+            'serie' => 'sometimes|nullable|string|max:255',
             'numero_serie' => 'sometimes|nullable|string|max:255',
             'estado' => 'sometimes|nullable|string|max:100',
             'notas' => 'sometimes|nullable|string',
         ]);
+        $data = $this->normalizeSeriePayload($data);
 
         $aeronave->update($data);
         $this->bustCache();
@@ -157,5 +161,16 @@ class AeronaveController extends Controller
         Cache::forever('aeronaves_cache_version', (int) Cache::get('aeronaves_cache_version', 1) + 1);
         Cache::forever('motores_cache_version', (int) Cache::get('motores_cache_version', 1) + 1);
         Cache::forever('dashboard_cache_version', (int) Cache::get('dashboard_cache_version', 1) + 1);
+    }
+
+    private function normalizeSeriePayload(array $data): array
+    {
+        if (array_key_exists('serie', $data) && ! array_key_exists('numero_serie', $data)) {
+            $data['numero_serie'] = $data['serie'];
+        }
+
+        unset($data['serie']);
+
+        return $data;
     }
 }
