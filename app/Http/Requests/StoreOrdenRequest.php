@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Orden;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreOrdenRequest extends FormRequest
@@ -23,6 +24,14 @@ class StoreOrdenRequest extends FormRequest
             'ata_chapter_id' => 'nullable|exists:ata_chapters,id',
             'ata_subchapter_id' => 'nullable|exists:ata_subchapters,id',
             'motor_id' => 'nullable|exists:motores,id',
+            'folio' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('ordenes', 'folio')->ignore($this->currentOrder()?->id),
+            ],
+            'consecutivo' => 'nullable|integer|min:1',
+            'anio' => 'nullable|integer|min:2000|max:2100',
             'fecha' => 'nullable|date',
             'cliente' => 'nullable|string|max:255',
             'matricula' => 'nullable|string|max:255',

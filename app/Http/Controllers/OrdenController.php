@@ -223,7 +223,7 @@ class OrdenController extends Controller
             $data['area_id'] = $this->effectiveAreaId($request) ?? $data['area_id'];
             $this->authorizeAreaId($request, $data['area_id']);
             $area = Area::findOrFail($data['area_id']);
-            $folio = $this->ordenService->generarFolio($area);
+            $folio = $this->resolveFolioPayload($data, $area);
             $this->mergeMotorContext($data);
 
             if (!empty($data['ata_subchapter_id']) && empty($data['ata_chapter_id'])) {
@@ -389,6 +389,11 @@ class OrdenController extends Controller
 
             if (!empty($data['ata_subchapter_id']) && empty($data['ata_chapter_id'])) {
                 $data['ata_chapter_id'] = AtaSubchapter::findOrFail($data['ata_subchapter_id'])->ata_chapter_id;
+            }
+
+            if (array_key_exists('folio', $data) || array_key_exists('consecutivo', $data) || array_key_exists('anio', $data)) {
+                $area = Area::findOrFail($data['area_id']);
+                $data = array_merge($data, $this->resolveFolioPayload($data, $area));
             }
 
             $ordene->update(SchemaPayload::forModel($ordene, Arr::except($data, $this->nestedKeys())));
@@ -666,6 +671,50 @@ class OrdenController extends Controller
             'created_at',
             'updated_at',
         ];
+    }
+
+    private function resolveFolioPayload(array $data, Area $area): array
+    {
+        $manualFolio = trim((string) ($data['folio'] ?? ''));
+
+        if ($manualFolio === '') {
+            return $this->ordenService->generarFolio($area);
+        }
+
+        $consecutivo = isset($data['consecutivo']) && is_numeric($data['consecutivo'])
+            ? (int) $data['consecutivo']
+            : $this->parseConsecutivoFromFolio($manualFolio);
+        $anio = isset($data['anio']) && is_numeric($data['anio'])
+            ? (int) $data['anio']
+            : $this->parseAnioFromFolio($manualFolio);
+
+        return [
+            'folio' => $manualFolio,
+            'consecutivo' => $consecutivo,
+            'anio' => $anio,
+        ];
+    }
+
+    private function parseConsecutivoFromFolio(string $folio): int
+    {
+        if (preg_match('/-(\d+)$/', $folio, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        return 1;
+    }
+
+    private function parseAnioFromFolio(string $folio): int
+    {
+        if (preg_match('/[A-Z]+(\d{2})-\d+$/i', $folio, $matches) === 1) {
+            return 2000 + (int) $matches[1];
+        }
+
+        if (preg_match('/(\d{4})/', $folio, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        return (int) now()->year;
     }
 
     private function detailRelations(): array
