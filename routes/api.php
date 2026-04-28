@@ -13,6 +13,7 @@ use App\Http\Controllers\ClientePortalController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
+use App\Http\Controllers\InspectorController;
 use App\Http\Controllers\ManualController;
 use App\Http\Controllers\ManualSearchController;
 use App\Http\Controllers\MedicionController;
@@ -44,6 +45,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('personal-tecnico', PersonalTecnicoController::class)->parameters([
             'personal-tecnico' => 'personalTecnico',
         ]);
+        Route::apiResource('inspectores', InspectorController::class);
         Route::apiResource('clientes', ClienteController::class)->parameters([
             'clientes' => 'cliente',
         ]);
