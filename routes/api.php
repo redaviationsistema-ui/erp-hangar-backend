@@ -1,15 +1,15 @@
 <?php
 
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AeronaveController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\AtaController;
 use App\Http\Controllers\AtaTaskTemplateController;
-use App\Http\Controllers\AeronaveController;
-use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClientePortalController;
-use App\Http\Controllers\CartaController;
 use App\Http\Controllers\ConsumibleController;
 use App\Http\Controllers\DiscrepanciaController;
 use App\Http\Controllers\HerramientaController;
@@ -19,6 +19,7 @@ use App\Http\Controllers\MedicionController;
 use App\Http\Controllers\MotorController;
 use App\Http\Controllers\NdtController;
 use App\Http\Controllers\OrdenController;
+use App\Http\Controllers\PersonalTecnicoController;
 use App\Http\Controllers\RefaccionController;
 use App\Http\Controllers\TallerExternoController;
 use App\Http\Controllers\TareaController;
@@ -39,6 +40,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::apiResource('usuarios', UsuarioController::class)->parameters([
             'usuarios' => 'usuario',
+        ]);
+        Route::apiResource('personal-tecnico', PersonalTecnicoController::class)->parameters([
+            'personal-tecnico' => 'personalTecnico',
         ]);
         Route::apiResource('clientes', ClienteController::class)->parameters([
             'clientes' => 'cliente',
@@ -90,5 +94,3 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('mediciones', MedicionController::class);
     });
 });
-
-

@@ -29,6 +29,11 @@ class Area extends Model
         return $this->hasMany(User::class);
     }
 
+    public function personalTecnico(): HasMany
+    {
+        return $this->hasMany(PersonalTecnico::class);
+    }
+
     public function ataTaskTemplates(): HasMany
     {
         return $this->hasMany(AtaTaskTemplate::class);

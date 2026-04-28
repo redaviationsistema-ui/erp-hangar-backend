@@ -10,6 +10,7 @@ use App\Models\Medicion;
 use App\Models\Motor;
 use App\Models\Ndt;
 use App\Models\Orden;
+use App\Models\PersonalTecnico;
 use App\Models\Refaccion;
 use App\Models\TallerExterno;
 use App\Models\Tarea;
@@ -36,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         Aeronave::observe($observer);
         Motor::observe($observer);
         Orden::observe($observer);
+        PersonalTecnico::observe($observer);
         Tarea::observe($observer);
         Discrepancia::observe($observer);
         Refaccion::observe($observer);
