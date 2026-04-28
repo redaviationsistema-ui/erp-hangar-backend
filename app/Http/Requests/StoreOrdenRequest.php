@@ -52,6 +52,7 @@ class StoreOrdenRequest extends FormRequest
             'accion_correctiva' => 'nullable|string',
             'horas_labor' => 'nullable|string|max:255',
             'tecnico_responsable' => 'nullable|string|max:255',
+            'auxiliar' => 'nullable|string|max:255',
             'inspector' => 'nullable|string|max:255',
             'fecha_inicio' => 'nullable|date',
             'fecha_termino' => 'nullable|date',

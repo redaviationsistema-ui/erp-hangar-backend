@@ -37,6 +37,7 @@ class OrdenResource extends JsonResource
             'accion_correctiva' => $this->accion_correctiva,
             'horas_labor' => $this->horas_labor,
             'tecnico_responsable' => $this->tecnico_responsable,
+            'auxiliar' => $this->auxiliar,
             'inspector' => $this->inspector,
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),
@@ -174,5 +175,4 @@ class OrdenResource extends JsonResource
         ];
     }
 }
-
 

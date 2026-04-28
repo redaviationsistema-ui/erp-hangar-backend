@@ -37,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $intervalo
  * @property string $accion_correctiva
  * @property string $tecnico_responsable
+ * @property string $auxiliar
  * @property string $inspector
  * @property string $fecha_inicio
  * @property string $fecha_termino
@@ -120,6 +121,7 @@ class Orden extends Model
         'accion_correctiva',
         'horas_labor',
         'tecnico_responsable',
+        'auxiliar',
         'inspector',
         'fecha_inicio',
         'fecha_termino',
