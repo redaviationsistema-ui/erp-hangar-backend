@@ -45,7 +45,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('personal-tecnico', PersonalTecnicoController::class)->parameters([
             'personal-tecnico' => 'personalTecnico',
         ]);
-        Route::apiResource('inspectores', InspectorController::class);
+        Route::apiResource('inspectores', InspectorController::class)->parameters([
+            'inspectores' => 'inspector',
+        ]);
         Route::apiResource('clientes', ClienteController::class)->parameters([
             'clientes' => 'cliente',
         ]);
